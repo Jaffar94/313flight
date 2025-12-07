@@ -486,9 +486,9 @@
         destinationSuggestions.classList.add('hidden');
       }
     }, 300);
-
-    destinationInput.addEventListener('input', handleDestinationInput);
     originInput.addEventListener('input', handleOriginInput);
+    destinationInput.addEventListener('input', handleDestinationInput);
+    
 
     document.addEventListener('click', (e) => {
       if (!originSuggestions.contains(e.target) && e.target !== originInput) {
