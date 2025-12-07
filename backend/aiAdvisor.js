@@ -5,7 +5,7 @@
 const { all, run } = require('./db');
 
 /* Airline code → full name */
-const AIRLINE_MAP = {
+window.AIRLINE_MAP = {
   // Gulf / Middle East
   EK: "Emirates",
   EY: "Etihad Airways",
