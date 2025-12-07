@@ -10,9 +10,10 @@ console.log('SERPAPI_KEY present in env?', !!SERPAPI_KEY);
  * Format minutes into "Xh Ym"
  */
 function formatMinutesToDuration(mins) {
-  if (!mins || !Number.isFinite(mins)) return '';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
+  const n = Number(mins);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const h = Math.floor(n / 60);
+  const m = n % 60;
   if (h && m) return `${h}h ${m}m`;
   if (h) return `${h}h`;
   return `${m}m`;
@@ -20,7 +21,6 @@ function formatMinutesToDuration(mins) {
 
 /**
  * Search Google Flights via SerpApi and normalize into 313flight's flight shape.
- * Uses the Google Flights Results API: best_flights + other_flights.
  */
 async function searchSerpFlights({
   originCode,
@@ -36,7 +36,7 @@ async function searchSerpFlights({
     return [];
   }
 
-  // Optional: map cabin class to SerpApi travel_class
+  // Map cabin class to SerpApi travel_class (optional)
   const travelClassMap = {
     ECONOMY: 1,
     PREMIUM_ECONOMY: 2,
@@ -59,75 +59,114 @@ async function searchSerpFlights({
   if (adults) params.adults = adults;
   if (travel_class) params.travel_class = travel_class;
 
-  const res = await axios.get('https://serpapi.com/search.json', { params });
-  const data = res.data || {};
+  try {
+    const res = await axios.get('https://serpapi.com/search.json', { params });
+    const data = res.data || {};
 
-  const buckets = [];
-  if (Array.isArray(data.best_flights)) buckets.push(...data.best_flights);
-  if (Array.isArray(data.other_flights)) buckets.push(...data.other_flights);
+    // 🔍 Debug: log top-level structure
+    console.log(
+      '[SerpApi raw] status:',
+      res.status,
+      'keys:',
+      Object.keys(data || {})
+    );
+    console.log(
+      '[SerpApi raw] best_flights length:',
+      Array.isArray(data.best_flights) ? data.best_flights.length : 'none',
+      '| other_flights length:',
+      Array.isArray(data.other_flights) ? data.other_flights.length : 'none'
+    );
 
-  const flights = [];
+    const buckets = [];
+    if (Array.isArray(data.best_flights)) buckets.push(...data.best_flights);
+    if (Array.isArray(data.other_flights)) buckets.push(...data.other_flights);
 
-  for (const bucket of buckets) {
-    const segs = bucket.flights || [];
-    if (!segs.length) continue;
+    const flights = [];
 
-    const first = segs[0];
-    const last = segs[segs.length - 1];
+    for (const bucket of buckets) {
+      const segs = bucket.flights || [];
+      if (!segs.length) continue;
 
-    const departTime =
-      first.departure_airport?.time || first.departure_airport?.time_utc || null;
-    const arrivalTime =
-      last.arrival_airport?.time || last.arrival_airport?.time_utc || null;
+      const first = segs[0];
+      const last = segs[segs.length - 1];
 
-    const durationMinutes =
-      bucket.total_duration ||
-      bucket.duration ||
-      segs.reduce((sum, s) => sum + (s.duration || 0), 0);
+      const departTime =
+        first.departure_airport?.time ||
+        first.departure_airport?.time_utc ||
+        null;
+      const arrivalTime =
+        last.arrival_airport?.time ||
+        last.arrival_airport?.time_utc ||
+        null;
 
-    const duration = formatMinutesToDuration(durationMinutes);
+      const durationMinutes =
+        bucket.total_duration ||
+        bucket.duration ||
+        segs.reduce((sum, s) => sum + (s.duration || 0), 0);
 
-    // flight_number is usually like "6E 123" or "NH 962"
-    const rawFlightNumber = first.flight_number || '';
-    let carrierCode = '';
-    let flightNumber = rawFlightNumber;
+      const duration = formatMinutesToDuration(durationMinutes);
 
-    if (rawFlightNumber) {
-      const parts = rawFlightNumber.split(' ');
-      if (parts.length >= 2) {
-        carrierCode = parts[0];
-        flightNumber = `${parts[0]} ${parts[1]}`;
+      const rawFlightNumber = first.flight_number || '';
+      let carrierCode = '';
+      let flightNumber = rawFlightNumber;
+
+      if (rawFlightNumber) {
+        const parts = rawFlightNumber.split(' ');
+        if (parts.length >= 2) {
+          carrierCode = parts[0];
+          flightNumber = `${parts[0]} ${parts[1]}`;
+        } else if (parts.length === 1 && parts[0].length >= 2) {
+          carrierCode = parts[0].slice(0, 2);
+        }
       }
+
+      const airline = first.airline || airlineNameFromCode(carrierCode);
+      const price = Number(bucket.price || 0);
+
+      flights.push({
+        airline,
+        flightNumber,
+        departTime,
+        arrivalTime,
+        duration,
+        nonstop: segs.length === 1,
+        stops: segs.length - 1,
+        price,
+        currency: currency || 'USD',
+        bookingUrl:
+          data.search_metadata?.google_flights_url ||
+          'https://www.google.com/flights',
+        carrierCode,
+      });
     }
 
-    const airline = first.airline || airlineNameFromCode(carrierCode);
-    const price = Number(bucket.price || 0);
+    // 🔍 Debug: before/after cleaning
+    console.log(
+      `[SerpApi] built flights=${flights.length} (before filter)`
+    );
 
-    flights.push({
-      airline,
-      flightNumber,
-      departTime,
-      arrivalTime,
-      duration,
-      nonstop: segs.length === 1,
-      stops: segs.length - 1,
-      price,
-      currency: currency || 'USD',
-      bookingUrl:
-        data.search_metadata?.google_flights_url || 'https://www.google.com/flights',
-      carrierCode,
-    });
+    const cleaned = flights.filter(
+      (f) =>
+        f &&
+        f.departTime &&
+        f.arrivalTime &&
+        Number.isFinite(f.price) &&
+        f.price > 0
+    );
+
+    console.log(
+      `[SerpApi] origin=${originCode}, dest=${destinationCode}, date=${departureDate}, cleaned=${cleaned.length}`
+    );
+
+    return cleaned;
+  } catch (err) {
+    console.error(
+      'SerpApi error:',
+      err.response?.status,
+      err.response?.data || err.message
+    );
+    return [];
   }
-
-  const cleaned = flights.filter(
-    (f) => f && f.departTime && f.arrivalTime && Number.isFinite(f.price) && f.price > 0
-  );
-
-  console.log(
-    `[SerpApi] origin=${originCode}, dest=${destinationCode}, date=${departureDate}, flights=${cleaned.length}`
-  );
-
-  return cleaned;
 }
 
 module.exports = { searchSerpFlights };
