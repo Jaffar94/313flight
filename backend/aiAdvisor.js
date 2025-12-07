@@ -6,20 +6,67 @@ const { all, run } = require('./db');
 
 /* Airline code → full name */
 const AIRLINE_MAP = {
+  // Gulf / Middle East
   EK: "Emirates",
   EY: "Etihad Airways",
   QR: "Qatar Airways",
   GF: "Gulf Air",
-  UL: "SriLankan Airlines",
-  KU: "Kuwait Airways",
-  FZ: "FlyDubai",
-  '6E': "IndiGo",
-  AI: "Air India",
-  IX: "Air India Express",
-  G9: "Air Arabia",
   WY: "Oman Air",
   SV: "Saudia",
-  W5: "Mahan Air",
+  FZ: "flydubai",
+  G9: "Air Arabia",
+  J9: "Jazeera Airways",
+  XY: "flynas",
+  F3: "flyadeal",
+  RJ: "Royal Jordanian",
+  ME: "Middle East Airlines",
+  MS: "Egyptair",
+  LY: "El Al Israel Airlines",
+  IZ: "Arkia Israeli Airlines",
+
+  // India
+  "6E": "IndiGo",
+  AI: "Air India",
+  IX: "Air India Express",
+  I5: "AIX Connect",
+  UK: "Vistara",
+  SG: "SpiceJet",
+  QP: "Akasa Air",
+  G8: "Go First",
+
+  // Pakistan
+  PK: "Pakistan International Airlines",
+  ER: "SereneAir",
+  PA: "Airblue",
+
+  // Bangladesh
+  BG: "Biman Bangladesh Airlines",
+  BS: "US-Bangla Airlines",
+
+  // Sri Lanka / Nepal / Maldives / Region
+  UL: "SriLankan Airlines",
+  "4Y": "Hi Fly",        // often operates charters via region
+  KTM: "Yeti Airlines", // not an IATA code, flights usually show as 'YT', kept for safety
+
+  // Big global carriers (nice to have)
+  BA: "British Airways",
+  LH: "Lufthansa",
+  LX: "SWISS",
+  AF: "Air France",
+  KL: "KLM",
+  TK: "Turkish Airlines",
+  QR: "Qatar Airways", // already above, kept here for clarity
+  SQ: "Singapore Airlines",
+  CX: "Cathay Pacific",
+  MH: "Malaysia Airlines",
+  TG: "Thai Airways",
+  JL: "Japan Airlines",
+  NH: "ANA",
+  UA: "United Airlines",
+  AA: "American Airlines",
+  DL: "Delta Air Lines",
+  QF: "Qantas",
+  AC: "Air Canada",
 };
 
 /** Airline full name helper */
