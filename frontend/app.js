@@ -327,9 +327,21 @@ function renderFlights(list) {
       carrier ||
       "Unknown airline";
 
-    const airline = document.createElement('span');
-    airline.className = 'font-semibold text-slate-100';
-    airline.textContent = airlineName;
+    const carrier = f.carrierCode;
+const airlineName =
+  f.airline ||
+  (typeof AIRLINE_MAP !== "undefined" && AIRLINE_MAP[carrier]) ||
+  carrier ||
+  "Unknown airline";
+
+const airline = document.createElement('span');
+airline.className = 'font-semibold text-slate-100';
+airline.textContent = airlineName;
+
+badge.textContent = (carrier || airlineName || "??")
+  .slice(0, 3)
+  .toUpperCase();
+
 
     const fn = document.createElement('span');
     fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
