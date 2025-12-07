@@ -1,8 +1,9 @@
 // backend/serpFlightsClient.js
+// SerpApi (Google Flights) client for flights + airport/location fallback
+
 const axios = require('axios');
 const { airlineNameFromCode } = require('./aiAdvisor');
 
-// Read SERPAPI_KEY once from env
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
 console.log('SERPAPI_KEY present in env?', !!SERPAPI_KEY);
 
@@ -32,7 +33,7 @@ async function searchSerpFlights({
   currency,
 }) {
   if (!SERPAPI_KEY) {
-    console.warn('SERPAPI_KEY is not set; SerpApi will not be used.');
+    console.warn('SERPAPI_KEY is not set; SerpApi will not be used for flights.');
     return [];
   }
 
@@ -45,7 +46,7 @@ async function searchSerpFlights({
   };
   const travel_class = cabin ? travelClassMap[cabin.toUpperCase()] : undefined;
 
-    // Decide type: 1 = round trip, 2 = one way
+  // type: 1 = round trip, 2 = one way
   const type = returnDate ? 1 : 2;
 
   const params = {
@@ -56,11 +57,11 @@ async function searchSerpFlights({
     outbound_date: departureDate,
     hl: 'en',
     currency: currency || 'USD',
-    type, // explicitly tell SerpApi what kind of trip this is
+    type,
   };
 
   if (returnDate) {
-    params.return_date = returnDate; // required when type = 1
+    params.return_date = returnDate; // required if type = 1
   }
   if (adults) params.adults = adults;
   if (travel_class) params.travel_class = travel_class;
@@ -69,7 +70,7 @@ async function searchSerpFlights({
     const res = await axios.get('https://serpapi.com/search.json', { params });
     const data = res.data || {};
 
-    // 🔍 Debug: log top-level structure
+    // 🔍 Debug logging
     console.log(
       '[SerpApi raw] status:',
       res.status,
@@ -146,7 +147,6 @@ async function searchSerpFlights({
       });
     }
 
-    // 🔍 Debug: before/after cleaning
     console.log(
       `[SerpApi] built flights=${flights.length} (before filter)`
     );
@@ -167,7 +167,7 @@ async function searchSerpFlights({
     return cleaned;
   } catch (err) {
     console.error(
-      'SerpApi error:',
+      'SerpApi error (flights):',
       err.response?.status,
       err.response?.data || err.message
     );
@@ -175,4 +175,79 @@ async function searchSerpFlights({
   }
 }
 
-module.exports = { searchSerpFlights };
+/**
+ * Search for airports via SerpApi (Google Flights "airports" field) as a fallback
+ * when Amadeus does not return good location suggestions.
+ *
+ * We send a minimal google_flights request using the query as departure_id
+ * and then read data.airports[] to build location suggestions.
+ */
+async function searchSerpLocations(query) {
+  if (!SERPAPI_KEY) {
+    console.warn('SERPAPI_KEY is not set; SerpApi will not be used for locations.');
+    return [];
+  }
+
+  const trimmed = (query || '').trim();
+  if (!trimmed) return [];
+
+  const today = new Date().toISOString().substring(0, 10);
+
+  const params = {
+    api_key: SERPAPI_KEY,
+    engine: 'google_flights',
+    departure_id: trimmed,     // can be city/airport name or code
+    arrival_id: 'DXB',         // dummy arrival, we only care about airports[]
+    outbound_date: today,
+    hl: 'en',
+  };
+
+  try {
+    const res = await axios.get('https://serpapi.com/search.json', { params });
+    const data = res.data || {};
+    const airports = Array.isArray(data.airports) ? data.airports : [];
+
+    const suggestions = airports
+      .map((a) => {
+        const code = a.airport_id || a.airport_code || a.code;
+        const city = a.city || a.name;
+        const country = a.country || a.country_name || '';
+        if (!code || !city) return null;
+
+        return {
+          iataCode: code.toUpperCase(),
+          label: `${city}, ${country} (${code.toUpperCase()})`,
+          cityName: city,
+          countryName: country,
+          type: 'AIRPORT_SERP',
+        };
+      })
+      .filter(Boolean);
+
+    // Deduplicate by IATA code
+    const map = new Map();
+    for (const s of suggestions) {
+      if (!map.has(s.iataCode)) {
+        map.set(s.iataCode, s);
+      }
+    }
+
+    const result = Array.from(map.values());
+    console.log(
+      `[SerpApi locations] query="${trimmed}" airports=${result.length}`
+    );
+    return result;
+  } catch (err) {
+    console.error(
+      'SerpApi error (locations):',
+      err.response?.status,
+      err.response?.data || err.message
+    );
+    return [];
+  }
+}
+
+module.exports = {
+  searchSerpFlights,
+  searchSerpLocations,
+};
