@@ -309,47 +309,26 @@ function renderFlights(list) {
     const badge = document.createElement('div');
     badge.className =
       'h-8 w-8 rounded-full bg-sky-500/90 flex items-center justify-center text-[0.7rem] font-semibold text-slate-900';
+
+    const carrier = f.carrierCode;
+    const airlineName =
+      f.airline ||
+      carrier ||
+      "Unknown airline";
+
     badge.textContent = (carrier || airlineName || "??")
       .slice(0, 3)
       .toUpperCase();
-
 
     const main = document.createElement('div');
     main.className = 'space-y-1';
 
     const titleRow = document.createElement('div');
     titleRow.className = 'flex items-center gap-2 flex-wrap';
-    const carrier = f.carrierCode;
-    const airlineName =
-      f.airline ||
-      AIRLINE_MAP[carrier] ||
-      carrier ||
-      "Unknown airline";
-
-        const carrier = f.carrierCode;
-    const airlineName =
-      f.airline ||      // backend-pretty name if present
-      carrier ||        // at least show the code
-      "Unknown airline";
 
     const airline = document.createElement('span');
     airline.className = 'font-semibold text-slate-100';
     airline.textContent = airlineName;
-
-    const fn = document.createElement('span');
-    fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
-    fn.textContent = f.flightNumber || '';
-
-    titleRow.appendChild(airline);
-    titleRow.appendChild(fn);
-
-    // badge:
-    badge.textContent = (carrier || airlineName || "??")
-      .slice(0, 3)
-      .toUpperCase();
-
-
-
 
     const fn = document.createElement('span');
     fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
