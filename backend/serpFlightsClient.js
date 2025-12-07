@@ -2,11 +2,9 @@
 const axios = require('axios');
 const { airlineNameFromCode } = require('./aiAdvisor');
 
+// Read SERPAPI_KEY once from env
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
-console.log(
-  `[Search] ${originCode}->${destinationCode} ${departureDate} | Amadeus=${flightsAmadeus.length}, SerpApi=${flightsSerp.length}`
-);
-
+console.log('SERPAPI_KEY present in env?', !!SERPAPI_KEY);
 
 /**
  * Format minutes into "Xh Ym"
@@ -23,7 +21,6 @@ function formatMinutesToDuration(mins) {
 /**
  * Search Google Flights via SerpApi and normalize into 313flight's flight shape.
  * Uses the Google Flights Results API: best_flights + other_flights.
- * https://serpapi.com/google-flights-results
  */
 async function searchSerpFlights({
   originCode,
@@ -39,7 +36,7 @@ async function searchSerpFlights({
     return [];
   }
 
-  // Map cabin to SerpApi travel_class (1–4)
+  // Optional: map cabin class to SerpApi travel_class
   const travelClassMap = {
     ECONOMY: 1,
     PREMIUM_ECONOMY: 2,
