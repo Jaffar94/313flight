@@ -1,5 +1,7 @@
+// backend/aiAdvisor.js
 const { all } = require('./db');
 
+// Airline code → name map
 const AIRLINES = {
   EK: 'Emirates',
   QR: 'Qatar Airways',
@@ -38,6 +40,7 @@ function daysBetween(todayStr, departureStr) {
   return Math.round(diff / (1000 * 60 * 60 * 24));
 }
 
+// Heuristic layer
 function heuristicAdvice(daysUntilDeparture, minPrice, avgPrice, maxPrice) {
   if (!Number.isFinite(daysUntilDeparture) || !Number.isFinite(minPrice)) {
     return {
@@ -52,7 +55,7 @@ function heuristicAdvice(daysUntilDeparture, minPrice, avgPrice, maxPrice) {
   const reasons = [];
 
   const priceRange = maxPrice - minPrice || 1;
-  const relPos = (avgPrice - minPrice) / priceRange;
+  const relPos = (avgPrice - minPrice) / priceRange; // 0 = cheap, 1 = expensive
 
   if (daysUntilDeparture <= 7) {
     action = 'Book';
@@ -91,6 +94,7 @@ function heuristicAdvice(daysUntilDeparture, minPrice, avgPrice, maxPrice) {
   };
 }
 
+// Simple linear regression
 function linearRegression(points) {
   const n = points.length;
   if (n < 2) return { slope: 0, intercept: 0 };
@@ -108,6 +112,7 @@ function linearRegression(points) {
   return { slope, intercept };
 }
 
+// Learning layer
 async function learningAdvice(origin, destination, departureDate) {
   const rows = await all(
     `
@@ -159,6 +164,7 @@ async function learningAdvice(origin, destination, departureDate) {
   };
 }
 
+// Blend both layers
 async function blendedAdvice({
   origin,
   destination,
