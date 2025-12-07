@@ -5,7 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const { run, all } = require('./db');
 const { searchLocations, searchFlights } = require('./amadeusClient');
-const { searchSerpFlights } = require('./serpFlightsClient');
+const { searchSerpFlights, searchSerpLocations } = require('./serpFlightsClient');
 const { airlineNameFromCode, formatDuration, blendedAdvice } = require('./aiAdvisor');
 
 const app = express();
@@ -22,27 +22,60 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: '313flight', db: 'Postgres (Neon)' });
 });
 
-// Locations (autocomplete)
+// Locations (autocomplete) – Amadeus primary, SerpApi fallback/booster
 app.get('/api/locations', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
     if (!q) return res.json({ locations: [] });
 
-    const data = await searchLocations(q);
-    const locations = data.map((loc) => ({
-      iataCode: loc.iataCode,
-      label: `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`,
-      cityName: loc.cityName,
-      countryName: loc.countryName,
-      type: loc.type,
-    }));
+    // 1️⃣ Primary: Amadeus location search
+    let locations = [];
+    try {
+      const data = await searchLocations(q);
+      locations = (data || []).map((loc) => ({
+        iataCode: loc.iataCode,
+        label: `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`,
+        cityName: loc.cityName,
+        countryName: loc.countryName,
+        type: loc.type,
+      }));
+    } catch (err) {
+      console.warn('Amadeus location search failed:', err.message);
+    }
 
-    res.json({ locations });
+    // 2️⃣ Fallback/booster: SerpApi airports if Amadeus misses things
+    let serpLocations = [];
+    try {
+      serpLocations = await searchSerpLocations(q);
+    } catch (err) {
+      console.warn('SerpApi location search failed:', err.message);
+    }
+
+    // 3️⃣ Merge + dedupe by IATA code (Amadeus first, then SerpApi)
+    const map = new Map();
+
+    for (const loc of locations) {
+      if (!loc.iataCode) continue;
+      map.set(loc.iataCode.toUpperCase(), loc);
+    }
+
+    for (const loc of serpLocations) {
+      if (!loc.iataCode) continue;
+      const code = loc.iataCode.toUpperCase();
+      if (!map.has(code)) {
+        map.set(code, loc);
+      }
+    }
+
+    const merged = Array.from(map.values());
+
+    res.json({ locations: merged });
   } catch (err) {
     console.error('Location error:', err.message);
     res.status(500).json({ error: 'Unable to fetch locations at the moment.' });
   }
 });
+
 
 /**
  * Build a Google Flights URL using a search query:
