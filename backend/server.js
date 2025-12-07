@@ -118,19 +118,28 @@ function normalizeAmadeus(offer, origin, dest, currency) {
 /* ----------------------------------------------------------
    Merge + dedupe
 ---------------------------------------------------------- */
-function dedupeFlights(flights) {
-  const map = new Map();
-  for (const f of flights) {
-    if (!f) continue;   // ✅ skip bad entries, don't return
+    const carrier = f.carrierCode;
+    const airlineName =
+      f.airline ||      // backend-pretty name if present
+      carrier ||        // at least show the code
+      "Unknown airline";
 
-    const key =
-      `${f.carrierCode}-${f.flightNumber}-${f.departTime}-${f.arrivalTime}`;
-    if (!map.has(key) || f.price < map.get(key).price) {
-      map.set(key, f);
-    }
-  }
-  return Array.from(map.values());
-}
+    const airline = document.createElement('span');
+    airline.className = 'font-semibold text-slate-100';
+    airline.textContent = airlineName;
+
+    const fn = document.createElement('span');
+    fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
+    fn.textContent = f.flightNumber || '';
+
+    titleRow.appendChild(airline);
+    titleRow.appendChild(fn);
+
+    // badge:
+    badge.textContent = (carrier || airlineName || "??")
+      .slice(0, 3)
+      .toUpperCase();
+
 
 
 /* ----------------------------------------------------------
