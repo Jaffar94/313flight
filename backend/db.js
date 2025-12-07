@@ -1,6 +1,8 @@
+// backend/db.js
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 
+// Use env DB_PATH if provided (for Render/Railway disks), otherwise local file
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '313flight.db');
 const db = new sqlite3.Database(DB_PATH);
 
