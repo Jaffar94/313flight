@@ -3,7 +3,7 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const { run, all, get } = require('./db');
+const { run, all } = require('./db');
 const { searchLocations, searchFlights } = require('./amadeusClient');
 const { searchSerpFlights } = require('./serpFlightsClient');
 const { airlineNameFromCode, formatDuration, blendedAdvice } = require('./aiAdvisor');
@@ -437,33 +437,6 @@ app.get('/api/history', async (req, res) => {
     console.error('/api/history error', err.message);
     res.status(500).json({
       error: 'Unable to load price history.',
-    });
-  }
-});
-
-// /api/stats – basic learning stats
-app.get('/api/stats', async (req, res) => {
-  try {
-    const totalRow = await get('SELECT COUNT(*)::int as count FROM price_history', []);
-    const topRoutes = await all(
-      `
-        SELECT origin, destination, COUNT(*)::int as count
-        FROM price_history
-        GROUP BY origin, destination
-        ORDER BY count DESC
-        LIMIT 5
-      `
-    );
-
-    res.json({
-      dbEngine: 'Postgres (Neon)',
-      totalHistoryPoints: totalRow?.count || 0,
-      topRoutes,
-    });
-  } catch (err) {
-    console.error('/api/stats error', err.message);
-    res.status(500).json({
-      error: 'Unable to load stats.',
     });
   }
 });
