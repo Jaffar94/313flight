@@ -3,6 +3,8 @@ const axios = require('axios');
 const { airlineNameFromCode } = require('./aiAdvisor');
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
+const SERPAPI_KEY = process.env.SERPAPI_KEY;
+console.log('SERPAPI_KEY present in env?', !!SERPAPI_KEY);
 
 /**
  * Format minutes into "Xh Ym"
