@@ -102,6 +102,22 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
   }
 }
 
+// Merge + dedupe flights from different providers
+function dedupeFlights(flights) {
+  const map = new Map();
+
+  flights.forEach((f) => {
+    if (!f) return;
+    const key = `${f.carrierCode || ''}-${f.flightNumber || ''}-${f.departTime || ''}-${f.arrivalTime || ''}`;
+    const existing = map.get(key);
+    if (!existing || (Number.isFinite(f.price) && f.price < existing.price)) {
+      map.set(key, f);
+    }
+  });
+
+  return Array.from(map.values());
+}
+
 // Record price history snapshot in SQLite
 async function recordPriceHistory({
   origin,
@@ -149,7 +165,7 @@ async function recordPriceHistory({
   return { min_price, avg_price, max_price, days_until_departure: diffDays };
 }
 
-// Flexible dates helper (Amadeus only, for now)
+// Flexible dates helper (Amadeus only)
 async function getFlexibleDateSummary({
   originCode,
   destinationCode,
@@ -206,7 +222,7 @@ async function getFlexibleDateSummary({
   return flexResults.sort((a, b) => a.offset - b.offset);
 }
 
-// /api/flights – main search + AI + flexible dates
+// /api/flights – main search (Amadeus + SerpApi), AI, flexible dates
 app.post('/api/flights', async (req, res) => {
   try {
     const {
@@ -253,8 +269,8 @@ app.post('/api/flights', async (req, res) => {
 
     const adults = Math.min(Math.max(parseInt(travelers, 10) || 1, 1), 9);
 
-    // 1️⃣ Try Amadeus first
-    let flights = [];
+    // 1️⃣ Amadeus flights
+    let flightsAmadeus = [];
     try {
       const apiRes = await searchFlights({
         originCode,
@@ -267,30 +283,30 @@ app.post('/api/flights', async (req, res) => {
       });
 
       const offers = apiRes.data || [];
-      flights = offers
+      flightsAmadeus = offers
         .map((offer) => normalizeFlightOffer(offer, originCode, destinationCode, currency))
         .filter(Boolean);
     } catch (err) {
       console.warn('Amadeus search failed:', err.message);
     }
 
-    // 2️⃣ If Amadeus returned nothing → try SerpApi
-    if (!flights.length) {
-      try {
-        const serpFlights = await searchSerpFlights({
-          originCode,
-          destinationCode,
-          departureDate,
-          returnDate: tripType === 'round' ? returnDate : undefined,
-          adults,
-          currency,
-        });
-
-        flights = serpFlights;
-      } catch (err) {
-        console.warn('SerpApi search failed:', err.message);
-      }
+    // 2️⃣ SerpApi flights (Google Flights) – in parallel or sequential
+    let flightsSerp = [];
+    try {
+      flightsSerp = await searchSerpFlights({
+        originCode,
+        destinationCode,
+        departureDate,
+        returnDate: tripType === 'round' ? returnDate : undefined,
+        adults,
+        currency,
+      });
+    } catch (err) {
+      console.warn('SerpApi search failed:', err.message);
     }
+
+    // 3️⃣ Merge + dedupe from both sources
+    const flights = dedupeFlights([...flightsAmadeus, ...flightsSerp]);
 
     if (!flights.length) {
       return res.json({
@@ -300,7 +316,7 @@ app.post('/api/flights', async (req, res) => {
       });
     }
 
-    // Basic stats for AI
+    // Stats for AI
     const prices = flights.map((f) => f.price);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
@@ -310,7 +326,7 @@ app.post('/api/flights', async (req, res) => {
       flights[0]
     );
 
-    // Record history snapshot (we log whatever flights we ended up with)
+    // Record history snapshot (combined data)
     await recordPriceHistory({
       origin: originCode,
       destination: destinationCode,
@@ -332,7 +348,7 @@ app.post('/api/flights', async (req, res) => {
       bestFlight,
     });
 
-    // Flexible dates: Amadeus-only (we don't run SerpApi for ±3 days to save quota)
+    // Flexible dates: Amadeus-only (to save SerpApi quota)
     let flexSummary = [];
     if (flexibleDates) {
       flexSummary = await getFlexibleDateSummary({
@@ -404,4 +420,34 @@ app.get('/api/history', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try {
     const totalRow = await get('SELECT COUNT(*) as count FROM price_history', []);
- 
+    const topRoutes = await all(
+      `
+        SELECT origin, destination, COUNT(*) as count
+        FROM price_history
+        GROUP BY origin, destination
+        ORDER BY count DESC
+        LIMIT 5
+      `
+    );
+
+    res.json({
+      dbEngine: 'SQLite',
+      totalHistoryPoints: totalRow?.count || 0,
+      topRoutes,
+    });
+  } catch (err) {
+    console.error('/api/stats error', err.message);
+    res.status(500).json({
+      error: 'Unable to load stats.',
+    });
+  }
+});
+
+// Fallback: serve SPA
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`313flight backend listening on port ${PORT}`);
+});
