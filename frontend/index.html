@@ -317,7 +317,7 @@
     </main>
   </div>
 
-  <script>
+    <script>
     const API_BASE = '';
 
     let currentTripType = 'oneway';
@@ -375,6 +375,7 @@
 
     const historyCommentary = document.getElementById('history-commentary');
 
+    // Init departure date to tomorrow
     (function initDates() {
       const now = new Date();
       now.setDate(now.getDate() + 1);
@@ -382,6 +383,7 @@
       departDateInput.value = val;
     })();
 
+    // Tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.dataset.tab;
@@ -392,6 +394,7 @@
       });
     });
 
+    // Trip type toggle
     function updateTripType(type) {
       currentTripType = type;
       if (type === 'oneway') {
@@ -411,6 +414,7 @@
     tripOneWayBtn.addEventListener('click', () => updateTripType('oneway'));
     tripRoundBtn.addEventListener('click', () => updateTripType('round'));
 
+    // Debounce helper
     function debounce(fn, delay = 300) {
       let t;
       return (...args) => {
@@ -419,12 +423,14 @@
       };
     }
 
+    // Fetch locations from backend
     async function fetchLocations(query) {
       const res = await fetch(`${API_BASE}/api/locations?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('Location API error');
       return res.json();
     }
 
+    // Render suggestions dropdown
     function showSuggestions(container, items, onSelect) {
       container.innerHTML = '';
       if (!items.length) {
@@ -449,6 +455,7 @@
       container.classList.remove('hidden');
     }
 
+    // Origin input handler
     const handleOriginInput = debounce(async () => {
       const q = originInput.value.trim();
       selectedOrigin = null;
@@ -468,8 +475,9 @@
       }
     }, 300);
 
+    // Destination input handler (FIXED HERE)
     const handleDestinationInput = debounce(async () => {
-      const q = destinationInput.value.trim();
+      const q = destinationInput.value.trim();  // ✅ correct `const q`
       selectedDestination = null;
       destinationError.classList.add('hidden');
       if (!q) {
@@ -486,10 +494,11 @@
         destinationSuggestions.classList.add('hidden');
       }
     }, 300);
+
     originInput.addEventListener('input', handleOriginInput);
     destinationInput.addEventListener('input', handleDestinationInput);
-    
 
+    // Hide suggestion boxes when clicking outside
     document.addEventListener('click', (e) => {
       if (!originSuggestions.contains(e.target) && e.target !== originInput) {
         originSuggestions.classList.add('hidden');
@@ -499,6 +508,7 @@
       }
     });
 
+    // Currency formatting
     function formatCurrency(value, currency) {
       try {
         return new Intl.NumberFormat(undefined, {
@@ -511,6 +521,7 @@
       }
     }
 
+    // Render flights list
     function renderFlights() {
       if (!allFlights.length) {
         resultsList.classList.add('hidden');
@@ -613,6 +624,7 @@
       filtersContainer.classList.remove('hidden');
     }
 
+    // Airline filter chips
     function buildAirlineChips() {
       airlineChips.innerHTML = '';
       const uniqueAirlines = [...new Set(allFlights.map(f => f.airline))];
@@ -636,6 +648,7 @@
       });
     }
 
+    // Flexible dates strip
     function renderFlexStrip(items, baseDate) {
       if (!items || !items.length) {
         flexStrip.classList.add('hidden');
@@ -667,6 +680,7 @@
       flexStrip.classList.remove('hidden');
     }
 
+    // AI panel render
     function renderAI(model) {
       if (!model) {
         aiPanel.classList.add('hidden');
@@ -694,6 +708,7 @@
       aiBadge.textContent = model.action;
     }
 
+    // History chart
     function renderHistoryChart(origin, destination, departDate) {
       if (!origin || !destination || !departDate) {
         historyCommentary.textContent =
@@ -776,6 +791,7 @@
         });
     }
 
+    // Stats panel
     function loadStats() {
       fetch(`${API_BASE}/api/stats`)
         .then(res => res.json())
@@ -797,6 +813,7 @@
     sortSelect.addEventListener('change', renderFlights);
     stopsSelect.addEventListener('change', renderFlights);
 
+    // Search button click
     searchBtn.addEventListener('click', async () => {
       originError.classList.add('hidden');
       destinationError.classList.add('hidden');
@@ -847,6 +864,7 @@
         }
       }
 
+      // Loading state
       resultsLoading.classList.remove('hidden');
       resultsEmpty.classList.add('hidden');
       resultsList.classList.add('hidden');
@@ -914,5 +932,6 @@
       }
     });
   </script>
+
 </body>
 </html>
