@@ -34,7 +34,7 @@ async function getAccessToken() {
 }
 
 // Location autocomplete: AIRPORT + CITY
-// Now with graceful fallback for Middle East cities when Amadeus returns nothing
+// With graceful fallback for Middle East cities when Amadeus returns nothing
 async function searchLocations(keyword) {
   const token = await getAccessToken();
 
@@ -162,8 +162,7 @@ async function searchLocations(keyword) {
   return fallback;
 }
 
-
-// Flight offers search
+// Flight offers search (Amadeus)
 async function searchFlights({
   originCode,
   destinationCode,
