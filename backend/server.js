@@ -124,7 +124,7 @@ function normalizeAmadeus(offer, origin, dest, currency) {
 function dedupeFlights(flights) {
   const map = new Map();
   for (const f of flights) {
-    if (!f) continue; // <-- fixed: skip invalid entries instead of returning
+    if (!f) continue; // skip invalid entries
 
     const key = `${f.carrierCode}-${f.flightNumber}-${f.departTime}-${f.arrivalTime}`;
     if (!map.has(key) || f.price < map.get(key).price) {
@@ -165,7 +165,7 @@ async function saveHistory({
     await run(`
       DELETE FROM price_history
       WHERE search_date < CURRENT_DATE - INTERVAL '90 days'
-   `);
+    `);
 
     // insert
     await run(
