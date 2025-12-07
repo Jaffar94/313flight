@@ -147,8 +147,67 @@ function dedupeFlights(flights) {
 
   return Array.from(map.values());
 }
+// Very lightweight seasonal summary: per route + month, far vs near prices
+async function updateSeasonalStats({
+  origin,
+  destination,
+  departureDate,
+  avgPrice,
+  daysUntilDeparture,
+}) {
+  try {
+    if (!process.env.DATABASE_URL) return;
 
-// Record price history snapshot in Postgres (Neon) – fail-safe with cleanup
+    const month = new Date(departureDate).getMonth() + 1; // 1–12
+
+    // Define "far" and "near" windows
+    let farSum = 0;
+    let farCount = 0;
+    let nearSum = 0;
+    let nearCount = 0;
+
+    if (daysUntilDeparture >= 30) {
+      farSum = avgPrice;
+      farCount = 1;
+    } else if (daysUntilDeparture <= 7) {
+      nearSum = avgPrice;
+      nearCount = 1;
+    } else {
+      // mid-range days are ignored for seasonal summary to keep it simple
+      return;
+    }
+
+    // Optional: clean very stale seasonal_stats rows (no updates in 180 days)
+    await run(
+      `
+        DELETE FROM seasonal_stats
+        WHERE last_updated < CURRENT_DATE - INTERVAL '180 days'
+      `
+    );
+
+    // Upsert aggregate
+    await run(
+      `
+        INSERT INTO seasonal_stats
+          (origin, destination, month, total_points, far_sum, far_count, near_sum, near_count, last_updated)
+        VALUES ($1, $2, $3, 1, $4, $5, $6, $7, NOW())
+        ON CONFLICT (origin, destination, month)
+        DO UPDATE SET
+          total_points = seasonal_stats.total_points + 1,
+          far_sum      = seasonal_stats.far_sum + EXCLUDED.far_sum,
+          far_count    = seasonal_stats.far_count + EXCLUDED.far_count,
+          near_sum     = seasonal_stats.near_sum + EXCLUDED.near_sum,
+          near_count   = seasonal_stats.near_count + EXCLUDED.near_count,
+          last_updated = NOW()
+      `,
+      [origin, destination, month, farSum, farCount, nearSum, nearCount]
+    );
+  } catch (err) {
+    console.error('Error updating seasonal_stats:', err.message);
+  }
+}
+
+// Record price history snapshot in Postgres (Neon) – with cleanup + seasonal summary
 async function recordPriceHistory({
   origin,
   destination,
@@ -157,7 +216,7 @@ async function recordPriceHistory({
   flights,
 }) {
   try {
-    // If DB is not configured, skip logging
+    // If DB is not configured, skip logging entirely
     if (!process.env.DATABASE_URL) {
       console.warn('No DATABASE_URL set; skipping price history logging.');
       return;
@@ -178,8 +237,7 @@ async function recordPriceHistory({
     const diffDays = Math.round((depDate - today) / (1000 * 60 * 60 * 24));
     const created_at = new Date().toISOString();
 
-    // 🔥 Cleanup: delete history older than 90 days (by search_date)
-    // Adjust '90 days' to '180 days' or '365 days' if you want a longer memory.
+    // 🔥 Cleanup: delete raw history older than 90 days (by search_date)
     await run(
       `
         DELETE FROM price_history
@@ -187,7 +245,7 @@ async function recordPriceHistory({
       `
     );
 
-    // Insert new snapshot
+    // Insert new detailed snapshot (still useful for Trend chart)
     await run(
       `
         INSERT INTO price_history
@@ -209,13 +267,23 @@ async function recordPriceHistory({
       ]
     );
 
+    // Update very lightweight seasonal summary (route + month)
+    await updateSeasonalStats({
+      origin,
+      destination,
+      departureDate,
+      avgPrice: avg_price,
+      daysUntilDeparture: diffDays,
+    });
+
     return { min_price, avg_price, max_price, days_until_departure: diffDays };
   } catch (err) {
-    // Very important: log, but DO NOT throw (never break flight search)
+    // Never break flight search because of logging
     console.error('Error recording price history:', err.message);
     return;
   }
 }
+
 
 
 // Flexible dates helper (Amadeus only)
@@ -393,7 +461,7 @@ app.post('/api/flights', async (req, res) => {
       (best, f) => (f.price < best.price ? f : best),
       flights[0]
     );
-
+    
     // Record history snapshot (combined data) in Postgres
     await recordPriceHistory({
       origin: originCode,
