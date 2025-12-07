@@ -18,6 +18,10 @@ const AIRLINES = {
   UK: 'Vistara',
   SG: 'SpiceJet',
 
+  // Sri Lanka, Kuwait (the ones you asked)
+  UL: 'SriLankan Airlines',
+  KU: 'Kuwait Airways',
+
   // Europe / global majors
   BA: 'British Airways',
   LH: 'Lufthansa',
@@ -41,6 +45,7 @@ const AIRLINES = {
   DL: 'Delta Air Lines',
   AC: 'Air Canada',
 };
+
 
 
 function airlineNameFromCode(code) {
