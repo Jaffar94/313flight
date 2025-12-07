@@ -43,12 +43,20 @@ async function searchLocations(query) {
   });
 
   const data = res.data?.data || [];
-  return data.map((d) => ({
-    iataCode: d.iataCode,
-    cityName: d.address?.cityName || d.name,
-    countryName: d.address?.countryName,
+return data.map((d) => {
+  const cityName = d.address?.cityName || d.name;
+  const countryName = d.address?.countryName;
+  const iataCode = d.iataCode;
+
+  return {
+    iataCode,
+    cityName,
+    countryName,
     type: d.subType,
-  }));
+    label: `${cityName}, ${countryName} (${iataCode})`,
+  };
+});
+
 }
 
 /** Flight search */
