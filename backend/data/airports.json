@@ -6,21 +6,515 @@
     "countryName": "United Arab Emirates"
   },
   {
+    "iataCode": "DWC",
+    "name": "Al Maktoum International Airport",
+    "cityName": "Dubai",
+    "countryName": "United Arab Emirates"
+  },
+  {
     "iataCode": "AUH",
     "name": "Abu Dhabi International Airport",
     "cityName": "Abu Dhabi",
     "countryName": "United Arab Emirates"
   },
   {
+    "iataCode": "SHJ",
+    "name": "Sharjah International Airport",
+    "cityName": "Sharjah",
+    "countryName": "United Arab Emirates"
+  },
+  {
+    "iataCode": "RKT",
+    "name": "Ras Al Khaimah International Airport",
+    "cityName": "Ras Al Khaimah",
+    "countryName": "United Arab Emirates"
+  },
+  {
+    "iataCode": "FJR",
+    "name": "Fujairah International Airport",
+    "cityName": "Fujairah",
+    "countryName": "United Arab Emirates"
+  },
+  {
+    "iataCode": "AAN",
+    "name": "Al Ain International Airport",
+    "cityName": "Al Ain",
+    "countryName": "United Arab Emirates"
+  },
+
+  {
     "iataCode": "DOH",
     "name": "Hamad International Airport",
     "cityName": "Doha",
     "countryName": "Qatar"
   },
+
   {
     "iataCode": "RUH",
     "name": "King Khalid International Airport (KKIA)",
     "cityName": "Riyadh",
     "countryName": "Saudi Arabia"
+  },
+  {
+    "iataCode": "JED",
+    "name": "King Abdulaziz International Airport",
+    "cityName": "Jeddah",
+    "countryName": "Saudi Arabia"
+  },
+  {
+    "iataCode": "DMM",
+    "name": "King Fahd International Airport",
+    "cityName": "Dammam",
+    "countryName": "Saudi Arabia"
+  },
+  {
+    "iataCode": "MED",
+    "name": "Prince Mohammad bin Abdulaziz Airport",
+    "cityName": "Medina",
+    "countryName": "Saudi Arabia"
+  },
+  {
+    "iataCode": "TIF",
+    "name": "Taif Regional Airport",
+    "cityName": "Taif",
+    "countryName": "Saudi Arabia"
+  },
+  {
+    "iataCode": "GIZ",
+    "name": "Jizan Regional Airport",
+    "cityName": "Jizan",
+    "countryName": "Saudi Arabia"
+  },
+  {
+    "iataCode": "ABT",
+    "name": "Al-Baha Domestic Airport",
+    "cityName": "Al-Baha",
+    "countryName": "Saudi Arabia"
+  },
+
+  {
+    "iataCode": "BAH",
+    "name": "Bahrain International Airport",
+    "cityName": "Manama",
+    "countryName": "Bahrain"
+  },
+
+  {
+    "iataCode": "MCT",
+    "name": "Muscat International Airport",
+    "cityName": "Muscat",
+    "countryName": "Oman"
+  },
+  {
+    "iataCode": "SLL",
+    "name": "Salalah International Airport",
+    "cityName": "Salalah",
+    "countryName": "Oman"
+  },
+
+  {
+    "iataCode": "KWI",
+    "name": "Kuwait International Airport",
+    "cityName": "Kuwait City",
+    "countryName": "Kuwait"
+  },
+
+  {
+    "iataCode": "AMM",
+    "name": "Queen Alia International Airport",
+    "cityName": "Amman",
+    "countryName": "Jordan"
+  },
+  {
+    "iataCode": "AQJ",
+    "name": "King Hussein International Airport",
+    "cityName": "Aqaba",
+    "countryName": "Jordan"
+  },
+
+  {
+    "iataCode": "BEY",
+    "name": "Beirut–Rafic Hariri International Airport",
+    "cityName": "Beirut",
+    "countryName": "Lebanon"
+  },
+
+  {
+    "iataCode": "BGW",
+    "name": "Baghdad International Airport",
+    "cityName": "Baghdad",
+    "countryName": "Iraq"
+  },
+  {
+    "iataCode": "EBL",
+    "name": "Erbil International Airport",
+    "cityName": "Erbil",
+    "countryName": "Iraq"
+  },
+  {
+    "iataCode": "BSR",
+    "name": "Basra International Airport",
+    "cityName": "Basra",
+    "countryName": "Iraq"
+  },
+
+  {
+    "iataCode": "IKA",
+    "name": "Imam Khomeini International Airport",
+    "cityName": "Tehran",
+    "countryName": "Iran"
+  },
+  {
+    "iataCode": "THR",
+    "name": "Mehrabad International Airport",
+    "cityName": "Tehran",
+    "countryName": "Iran"
+  },
+  {
+    "iataCode": "MHD",
+    "name": "Mashhad International Airport",
+    "cityName": "Mashhad",
+    "countryName": "Iran"
+  },
+  {
+    "iataCode": "SYZ",
+    "name": "Shiraz International Airport",
+    "cityName": "Shiraz",
+    "countryName": "Iran"
+  },
+  {
+    "iataCode": "TBZ",
+    "name": "Tabriz International Airport",
+    "cityName": "Tabriz",
+    "countryName": "Iran"
+  },
+
+  {
+    "iataCode": "CAI",
+    "name": "Cairo International Airport",
+    "cityName": "Cairo",
+    "countryName": "Egypt"
+  },
+  {
+    "iataCode": "SSH",
+    "name": "Sharm El Sheikh International Airport",
+    "cityName": "Sharm El Sheikh",
+    "countryName": "Egypt"
+  },
+  {
+    "iataCode": "HRG",
+    "name": "Hurghada International Airport",
+    "cityName": "Hurghada",
+    "countryName": "Egypt"
+  },
+  {
+    "iataCode": "LXR",
+    "name": "Luxor International Airport",
+    "cityName": "Luxor",
+    "countryName": "Egypt"
+  },
+
+  {
+    "iataCode": "IST",
+    "name": "Istanbul Airport",
+    "cityName": "Istanbul",
+    "countryName": "Turkey"
+  },
+  {
+    "iataCode": "SAW",
+    "name": "Sabiha Gokcen International Airport",
+    "cityName": "Istanbul",
+    "countryName": "Turkey"
+  },
+  {
+    "iataCode": "AYT",
+    "name": "Antalya Airport",
+    "cityName": "Antalya",
+    "countryName": "Turkey"
+  },
+  {
+    "iataCode": "ESB",
+    "name": "Ankara Esenboğa Airport",
+    "cityName": "Ankara",
+    "countryName": "Turkey"
+  },
+
+  {
+    "iataCode": "TLV",
+    "name": "Ben Gurion Airport",
+    "cityName": "Tel Aviv",
+    "countryName": "Israel"
+  },
+  {
+    "iataCode": "ETM",
+    "name": "Eilat Ramon Airport",
+    "cityName": "Eilat",
+    "countryName": "Israel"
+  },
+
+  {
+    "iataCode": "KBL",
+    "name": "Kabul International Airport (Hamid Karzai)",
+    "cityName": "Kabul",
+    "countryName": "Afghanistan"
+  },
+  {
+    "iataCode": "HER",
+    "name": "Herat International Airport",
+    "cityName": "Herat",
+    "countryName": "Afghanistan"
+  },
+
+  {
+    "iataCode": "PBH",
+    "name": "Paro International Airport",
+    "cityName": "Paro",
+    "countryName": "Bhutan"
+  },
+
+  {
+    "iataCode": "DEL",
+    "name": "Indira Gandhi International Airport",
+    "cityName": "New Delhi",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "BOM",
+    "name": "Chhatrapati Shivaji Maharaj International Airport",
+    "cityName": "Mumbai",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "BLR",
+    "name": "Kempegowda International Airport",
+    "cityName": "Bengaluru",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "MAA",
+    "name": "Chennai International Airport",
+    "cityName": "Chennai",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "HYD",
+    "name": "Rajiv Gandhi International Airport",
+    "cityName": "Hyderabad",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "CCU",
+    "name": "Netaji Subhas Chandra Bose International Airport",
+    "cityName": "Kolkata",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "COK",
+    "name": "Cochin International Airport",
+    "cityName": "Kochi",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "TRV",
+    "name": "Trivandrum International Airport",
+    "cityName": "Thiruvananthapuram",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "CCJ",
+    "name": "Calicut International Airport",
+    "cityName": "Kozhikode",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "GOI",
+    "name": "Dabolim Airport",
+    "cityName": "Goa",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "GOX",
+    "name": "Manohar International Airport",
+    "cityName": "Mopa (Goa)",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "AMD",
+    "name": "Sardar Vallabhbhai Patel International Airport",
+    "cityName": "Ahmedabad",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "PNQ",
+    "name": "Pune Airport",
+    "cityName": "Pune",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "NAG",
+    "name": "Dr. Babasaheb Ambedkar International Airport",
+    "cityName": "Nagpur",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "LKO",
+    "name": "Chaudhary Charan Singh International Airport",
+    "cityName": "Lucknow",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "JAI",
+    "name": "Jaipur International Airport",
+    "cityName": "Jaipur",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "IXC",
+    "name": "Shaheed Bhagat Singh International Airport",
+    "cityName": "Chandigarh",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "PAT",
+    "name": "Jay Prakash Narayan Airport",
+    "cityName": "Patna",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "GAU",
+    "name": "Lokpriya Gopinath Bordoloi International Airport",
+    "cityName": "Guwahati",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "IXB",
+    "name": "Bagdogra Airport",
+    "cityName": "Bagdogra",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "SXR",
+    "name": "Sheikh ul-Alam International Airport",
+    "cityName": "Srinagar",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "IXM",
+    "name": "Madurai Airport",
+    "cityName": "Madurai",
+    "countryName": "India"
+  },
+  {
+    "iataCode": "TRZ",
+    "name": "Tiruchirappalli International Airport",
+    "cityName": "Tiruchirappalli",
+    "countryName": "India"
+  },
+
+  {
+    "iataCode": "ISB",
+    "name": "Islamabad International Airport",
+    "cityName": "Islamabad",
+    "countryName": "Pakistan"
+  },
+  {
+    "iataCode": "KHI",
+    "name": "Jinnah International Airport",
+    "cityName": "Karachi",
+    "countryName": "Pakistan"
+  },
+  {
+    "iataCode": "LHE",
+    "name": "Allama Iqbal International Airport",
+    "cityName": "Lahore",
+    "countryName": "Pakistan"
+  },
+  {
+    "iataCode": "PEW",
+    "name": "Bacha Khan International Airport",
+    "cityName": "Peshawar",
+    "countryName": "Pakistan"
+  },
+  {
+    "iataCode": "UET",
+    "name": "Quetta International Airport",
+    "cityName": "Quetta",
+    "countryName": "Pakistan"
+  },
+
+  {
+    "iataCode": "DAC",
+    "name": "Hazrat Shahjalal International Airport",
+    "cityName": "Dhaka",
+    "countryName": "Bangladesh"
+  },
+  {
+    "iataCode": "CGP",
+    "name": "Shah Amanat International Airport",
+    "cityName": "Chattogram",
+    "countryName": "Bangladesh"
+  },
+  {
+    "iataCode": "ZYL",
+    "name": "Osmani International Airport",
+    "cityName": "Sylhet",
+    "countryName": "Bangladesh"
+  },
+  {
+    "iataCode": "CXB",
+    "name": "Cox's Bazar Airport",
+    "cityName": "Cox's Bazar",
+    "countryName": "Bangladesh"
+  },
+
+  {
+    "iataCode": "CMB",
+    "name": "Bandaranaike International Airport",
+    "cityName": "Colombo",
+    "countryName": "Sri Lanka"
+  },
+  {
+    "iataCode": "HRI",
+    "name": "Mattala Rajapaksa International Airport",
+    "cityName": "Hambantota",
+    "countryName": "Sri Lanka"
+  },
+  {
+    "iataCode": "JAF",
+    "name": "Jaffna International Airport",
+    "cityName": "Jaffna",
+    "countryName": "Sri Lanka"
+  },
+
+  {
+    "iataCode": "KTM",
+    "name": "Tribhuvan International Airport",
+    "cityName": "Kathmandu",
+    "countryName": "Nepal"
+  },
+  {
+    "iataCode": "BWA",
+    "name": "Gautam Buddha International Airport",
+    "cityName": "Bhairahawa",
+    "countryName": "Nepal"
+  },
+  {
+    "iataCode": "PKR",
+    "name": "Pokhara International Airport",
+    "cityName": "Pokhara",
+    "countryName": "Nepal"
+  },
+
+  {
+    "iataCode": "MLE",
+    "name": "Velana International Airport",
+    "cityName": "Malé",
+    "countryName": "Maldives"
+  },
+  {
+    "iataCode": "GAN",
+    "name": "Gan International Airport",
+    "cityName": "Gan",
+    "countryName": "Maldives"
   }
 ]
