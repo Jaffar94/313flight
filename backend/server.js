@@ -4,7 +4,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 
-const { run, all, get } = require("./db");
+const { run, all } = require("./db");
 const { searchLocations, searchFlights } = require("./amadeusClient");
 const { searchSerpFlights } = require("./serpFlightsClient");
 const { searchLocalAirports } = require("./localAirports");
@@ -80,7 +80,7 @@ app.get("/api/locations", async (req, res) => {
     res.json({ locations });
   } catch (err) {
     console.error("Location error:", err.message);
-    res.status(500).json({ error: "Location lookup failed" });
+    res.json({ locations: [] });
   }
 });
 
@@ -146,7 +146,6 @@ async function saveHistory({
 }) {
   try {
     if (!process.env.DATABASE_URL) return;
-
     if (!flights.length) return;
 
     const prices = flights.map((f) => f.price);
@@ -204,6 +203,105 @@ async function saveHistory({
 }
 
 /* ----------------------------------------------------------
+   FLEXIBLE DATES: build suggestions from history (±3 days)
+---------------------------------------------------------- */
+async function getFlexibleDateSuggestions({
+  origin,
+  destination,
+  baseDepartureDate,
+  currency,
+  baseMinPrice,
+}) {
+  try {
+    if (!process.env.DATABASE_URL) return [];
+
+    const base = new Date(baseDepartureDate);
+    if (isNaN(base)) return [];
+
+    const suggestions = [];
+
+    for (let offset = -3; offset <= 3; offset++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + offset);
+      const dateStr = d.toISOString().slice(0, 10);
+
+      const rows = await all(
+        `
+        SELECT MIN(min_price) AS min_price, MAX(currency) AS currency
+        FROM price_history
+        WHERE origin = $1
+          AND destination = $2
+          AND departure_date = $3
+      `,
+        [origin, destination, dateStr]
+      );
+
+      const row = rows[0];
+      if (!row || row.min_price === null) continue;
+
+      const minPrice = Number(row.min_price);
+      suggestions.push({
+        date: dateStr,
+        offset,
+        minPrice,
+        currency: row.currency || currency,
+        cheaperThanBase:
+          typeof baseMinPrice === "number" && baseMinPrice > 0
+            ? minPrice < baseMinPrice
+            : false,
+      });
+    }
+
+    // sort by date offset
+    suggestions.sort((a, b) => a.offset - b.offset);
+    return suggestions;
+  } catch (err) {
+    console.error("Flexible dates suggestion failed:", err.message);
+    return [];
+  }
+}
+
+/* ----------------------------------------------------------
+   HISTORY ENDPOINT for Trends & History tab
+---------------------------------------------------------- */
+app.get("/api/history", async (req, res) => {
+  try {
+    const { origin, destination, departDate } = req.query;
+
+    if (!origin || !destination || !departDate) {
+      return res.json({ history: [] });
+    }
+
+    if (!process.env.DATABASE_URL) {
+      // No DB configured → no history, but respond OK so UI shows friendly message
+      return res.json({ history: [] });
+    }
+
+    const rows = await all(
+      `
+      SELECT
+        days_until_departure,
+        avg_price,
+        currency
+      FROM price_history
+      WHERE origin = $1
+        AND destination = $2
+        AND departure_date = $3
+      ORDER BY days_until_departure ASC
+    `,
+      [origin, destination, departDate]
+    );
+
+    // Frontend expects data.history
+    res.json({ history: rows });
+  } catch (err) {
+    console.error("History load failed:", err.message);
+    // Return empty array instead of 500 so UI doesn't show "endpoint missing"
+    res.json({ history: [] });
+  }
+});
+
+/* ----------------------------------------------------------
    FLIGHT SEARCH
 ---------------------------------------------------------- */
 app.post("/api/flights", async (req, res) => {
@@ -220,8 +318,11 @@ app.post("/api/flights", async (req, res) => {
       flexibleDates,
     } = req.body;
 
-    if (!originCode || !destinationCode)
-      return res.status(400).json({ error: "Origin and destination required." });
+    if (!originCode || !destinationCode) {
+      return res
+        .status(400)
+        .json({ error: "Origin and destination required." });
+    }
 
     const adults = Math.min(Math.max(parseInt(travelers, 10) || 1, 1), 9);
 
@@ -266,8 +367,20 @@ app.post("/api/flights", async (req, res) => {
 
     const flights = dedupeFlights([...amaFlights, ...serpFlights]);
 
-    if (!flights.length)
-      return res.json({ flights: [], model: null, flexibleDates: [] });
+    if (!flights.length) {
+      return res.json({
+        flights: [],
+        model: null,
+        flexibleDates: [],
+        meta: {
+          originCode,
+          destinationCode,
+          departureDate,
+          returnDate,
+          currency,
+        },
+      });
+    }
 
     /** If SerpApi has a Google Flights URL, override bookingUrl */
     const serpUrl = serpFlights[0]?.bookingUrl;
@@ -275,7 +388,7 @@ app.post("/api/flights", async (req, res) => {
       flights.forEach((f) => (f.bookingUrl = serpUrl));
     }
 
-    /** AI */
+    /** Price stats */
     const prices = flights.map((f) => f.price);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
@@ -286,6 +399,7 @@ app.post("/api/flights", async (req, res) => {
       flights[0]
     );
 
+    // Save history + seasonal stats
     await saveHistory({
       origin: originCode,
       destination: destinationCode,
@@ -294,6 +408,19 @@ app.post("/api/flights", async (req, res) => {
       flights,
     });
 
+    // Flexible date suggestions (if user toggled it)
+    let flexibleSuggestions = [];
+    if (flexibleDates) {
+      flexibleSuggestions = await getFlexibleDateSuggestions({
+        origin: originCode,
+        destination: destinationCode,
+        baseDepartureDate: departureDate,
+        currency,
+        baseMinPrice: minPrice,
+      });
+    }
+
+    // AI blended model
     const model = await blendedAdvice({
       origin: originCode,
       destination: destinationCode,
@@ -308,8 +435,14 @@ app.post("/api/flights", async (req, res) => {
     res.json({
       flights,
       model,
-      flexibleDates: [],
-      meta: { originCode, destinationCode, departureDate, returnDate, currency },
+      flexibleDates: flexibleSuggestions,
+      meta: {
+        originCode,
+        destinationCode,
+        departureDate,
+        returnDate,
+        currency,
+      },
     });
   } catch (err) {
     console.error("Search error:", err.message);
