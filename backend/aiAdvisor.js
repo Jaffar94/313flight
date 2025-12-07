@@ -15,7 +15,7 @@ const AIRLINE_NAMES = {
   UL: 'SriLankan Airlines',
   KU: 'Kuwait Airways',
   AI: 'Air India',
-  6E: 'IndiGo',
+  '6E': 'IndiGo',
   G8: 'Go First',
   SG: 'SpiceJet',
   FZ: 'FlyDubai',
