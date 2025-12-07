@@ -45,6 +45,9 @@ async function searchSerpFlights({
   };
   const travel_class = cabin ? travelClassMap[cabin.toUpperCase()] : undefined;
 
+    // Decide type: 1 = round trip, 2 = one way
+  const type = returnDate ? 1 : 2;
+
   const params = {
     api_key: SERPAPI_KEY,
     engine: 'google_flights',
@@ -53,9 +56,12 @@ async function searchSerpFlights({
     outbound_date: departureDate,
     hl: 'en',
     currency: currency || 'USD',
+    type, // explicitly tell SerpApi what kind of trip this is
   };
 
-  if (returnDate) params.return_date = returnDate;
+  if (returnDate) {
+    params.return_date = returnDate; // required when type = 1
+  }
   if (adults) params.adults = adults;
   if (travel_class) params.travel_class = travel_class;
 
