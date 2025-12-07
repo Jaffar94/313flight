@@ -327,10 +327,10 @@ function renderFlights(list) {
       "Unknown airline";
 
     const carrier = f.carrierCode;
+
 const airlineName =
-  f.airline ||
-  (typeof AIRLINE_MAP !== "undefined" && AIRLINE_MAP[carrier]) ||
-  carrier ||
+  f.airline ||      // backend-pretty name if present
+  carrier ||        // at least show the code
   "Unknown airline";
 
 const airline = document.createElement('span');
@@ -340,6 +340,8 @@ airline.textContent = airlineName;
 badge.textContent = (carrier || airlineName || "??")
   .slice(0, 3)
   .toUpperCase();
+
+
 
 
     const fn = document.createElement('span');
