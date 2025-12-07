@@ -6,7 +6,7 @@ const { airlineNameFromCode } = require("./aiAdvisor");
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
 
-// Map your cabin string -> SerpApi travel_class code
+// Map cabin class → SerpApi travel_class
 const CLASS_MAP = {
   ECONOMY: 1,
   PREMIUM_ECONOMY: 2,
@@ -43,10 +43,10 @@ async function searchSerpFlights({
       currency,
       adults,
       travel_class: travelClass,
-      type: returnDate ? 1 : 2, // 1 = round trip, 2 = one-way
-      deep_search: true,        // 🔥 get results that match Google Flights UI
-      gl: "in",                 // country = India (helps surface local carriers like IndiGo)
-      hl: "en",                 // language = English
+      type: returnDate ? 1 : 2, // 1=round, 2=one-way
+      deep_search: true,        // 🔥 Ensures IndiGo & LCC flights appear
+      gl: "in",
+      hl: "en",
     };
 
     if (returnDate) params.return_date = returnDate;
@@ -55,7 +55,6 @@ async function searchSerpFlights({
     const res = await axios.get(url, { params });
 
     const data = res.data || {};
-
     const best = data.best_flights || [];
     const other = data.other_flights || [];
 
@@ -66,14 +65,13 @@ async function searchSerpFlights({
         const seg = f.flights?.[0];
         if (!seg) return null;
 
-        // SerpApi docs: flights[].airline (name) and flights[].flight_number like "6E 123"
+        // Extract airline & carrier
         const rawFlightNumber = seg.flight_number || "";
-        const carrierFromFN = rawFlightNumber.split(" ")[0] || null; // e.g. "6E"
-        const carrier = carrierFromFN;
+        const carrier = rawFlightNumber.split(" ")[0] || null;
 
         const airline =
-          airlineNameFromCode(carrier) || // try backend map
-          seg.airline ||                  // fallback to name from SerpApi ("IndiGo")
+          airlineNameFromCode(carrier) ||
+          seg.airline ||
           carrier ||
           "Unknown airline";
 
@@ -87,21 +85,34 @@ async function searchSerpFlights({
           seg.arrival_airport?.time ||
           null;
 
+        // 🔧 Robust stops handling (fix for "undefined stops")
+        let stopsCount = 0;
+
+        if (typeof f.stops === "number") {
+          stopsCount = f.stops;
+        } else if (typeof f.stops === "string") {
+          const m = f.stops.match(/\d+/); // extracts 1 from "1 stop"
+          stopsCount = m ? parseInt(m[0], 10) : 0;
+        } else {
+          stopsCount = 0;
+        }
+
+        const nonstop = stopsCount === 0;
+
         return {
           airline,
-          flightNumber: rawFlightNumber || (carrier || ""),
+          flightNumber: rawFlightNumber || carrier,
           departTime,
           arrivalTime,
-          nonstop: f.stops === 0,
-          stops: f.stops,
+          nonstop,
+          stops: stopsCount,
           price: Number(f.price || f.price_value || 0),
           currency,
           carrierCode: carrier,
           bookingUrl: googleUrl,
         };
       })
-      // keep only usable flights
-      .filter((f) => f && f.price > 0);
+      .filter((f) => f && f.price > 0); // keep valid flights only
 
     return flights;
   } catch (err) {
