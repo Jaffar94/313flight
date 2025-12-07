@@ -23,6 +23,7 @@ const AIRLINE_MAP = {
   MS: "Egyptair",
   LY: "El Al Israel Airlines",
   IZ: "Arkia Israeli Airlines",
+  KU: "Kuwait Airways",
 
   // India
   "6E": "IndiGo",
