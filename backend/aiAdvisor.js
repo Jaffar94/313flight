@@ -13,7 +13,7 @@ const AIRLINE_MAP = {
   UL: "SriLankan Airlines",
   KU: "Kuwait Airways",
   FZ: "FlyDubai",
-  6E: "IndiGo",
+  '6E': "IndiGo",
   AI: "Air India",
   IX: "Air India Express",
   G9: "Air Arabia",
