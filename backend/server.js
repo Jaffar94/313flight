@@ -121,7 +121,8 @@ function normalizeAmadeus(offer, origin, dest, currency) {
 function dedupeFlights(flights) {
   const map = new Map();
   for (const f of flights) {
-    if (!f) return;
+    if (!f) continue;   // ✅ skip bad entries, don't return
+
     const key =
       `${f.carrierCode}-${f.flightNumber}-${f.departTime}-${f.arrivalTime}`;
     if (!map.has(key) || f.price < map.get(key).price) {
@@ -130,6 +131,7 @@ function dedupeFlights(flights) {
   }
   return Array.from(map.values());
 }
+
 
 /* ----------------------------------------------------------
    Postgres history + seasonal update
