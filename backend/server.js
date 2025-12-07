@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const { run, all, get } = require('./db');
 const { searchLocations, searchFlights } = require('./amadeusClient');
+const { searchSerpFlights } = require('./serpFlightsClient');
 const { airlineNameFromCode, formatDuration, blendedAdvice } = require('./aiAdvisor');
 
 const app = express();
@@ -252,21 +253,44 @@ app.post('/api/flights', async (req, res) => {
 
     const adults = Math.min(Math.max(parseInt(travelers, 10) || 1, 1), 9);
 
-    // Call Amadeus
-    const apiRes = await searchFlights({
-      originCode,
-      destinationCode,
-      departureDate,
-      returnDate: tripType === 'round' ? returnDate : undefined,
-      adults,
-      cabin,
-      currency,
-    });
+    // 1️⃣ Try Amadeus first
+    let flights = [];
+    try {
+      const apiRes = await searchFlights({
+        originCode,
+        destinationCode,
+        departureDate,
+        returnDate: tripType === 'round' ? returnDate : undefined,
+        adults,
+        cabin,
+        currency,
+      });
 
-    const offers = apiRes.data || [];
-    const flights = offers
-      .map((offer) => normalizeFlightOffer(offer, originCode, destinationCode, currency))
-      .filter(Boolean);
+      const offers = apiRes.data || [];
+      flights = offers
+        .map((offer) => normalizeFlightOffer(offer, originCode, destinationCode, currency))
+        .filter(Boolean);
+    } catch (err) {
+      console.warn('Amadeus search failed:', err.message);
+    }
+
+    // 2️⃣ If Amadeus returned nothing → try SerpApi
+    if (!flights.length) {
+      try {
+        const serpFlights = await searchSerpFlights({
+          originCode,
+          destinationCode,
+          departureDate,
+          returnDate: tripType === 'round' ? returnDate : undefined,
+          adults,
+          currency,
+        });
+
+        flights = serpFlights;
+      } catch (err) {
+        console.warn('SerpApi search failed:', err.message);
+      }
+    }
 
     if (!flights.length) {
       return res.json({
@@ -286,7 +310,7 @@ app.post('/api/flights', async (req, res) => {
       flights[0]
     );
 
-    // Record history snapshot
+    // Record history snapshot (we log whatever flights we ended up with)
     await recordPriceHistory({
       origin: originCode,
       destination: destinationCode,
@@ -308,7 +332,7 @@ app.post('/api/flights', async (req, res) => {
       bestFlight,
     });
 
-    // Flexible dates: Amadeus-only
+    // Flexible dates: Amadeus-only (we don't run SerpApi for ±3 days to save quota)
     let flexSummary = [];
     if (flexibleDates) {
       flexSummary = await getFlexibleDateSummary({
@@ -380,34 +404,4 @@ app.get('/api/history', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try {
     const totalRow = await get('SELECT COUNT(*) as count FROM price_history', []);
-    const topRoutes = await all(
-      `
-        SELECT origin, destination, COUNT(*) as count
-        FROM price_history
-        GROUP BY origin, destination
-        ORDER BY count DESC
-        LIMIT 5
-      `
-    );
-
-    res.json({
-      dbEngine: 'SQLite',
-      totalHistoryPoints: totalRow?.count || 0,
-      topRoutes,
-    });
-  } catch (err) {
-    console.error('/api/stats error', err.message);
-    res.status(500).json({
-      error: 'Unable to load stats.',
-    });
-  }
-});
-
-// Fallback: serve SPA
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`313flight backend listening on port ${PORT}`);
-});
+ 
