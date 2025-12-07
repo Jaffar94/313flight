@@ -55,11 +55,10 @@ app.get('/api/locations', async (req, res) => {
  */
 function buildGoogleFlightsUrl(originCode, destinationCode, departTimeIso) {
   const departDate = (departTimeIso || '').substring(0, 10); // YYYY-MM-DD
-  const base = 'https://www.google.com/flights';
-  return `${base}/#search;f=${encodeURIComponent(originCode)};t=${encodeURIComponent(
-    destinationCode
-  )};d=${departDate};`;
+  const query = `Flights from ${originCode} to ${destinationCode} on ${departDate}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
+
 
 // Normalize Amadeus flight offer into frontend shape
 function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
@@ -320,6 +319,17 @@ app.post('/api/flights', async (req, res) => {
         flexibleDates: [],
       });
     }
+
+    // If SerpApi provided a specific Google Flights search URL, reuse it for all flights
+const serpSearchUrl =
+  flightsSerp.find(f => f.bookingUrl && f.bookingUrl.includes('google.com'))?.bookingUrl;
+
+if (serpSearchUrl) {
+  flights.forEach(f => {
+    f.bookingUrl = serpSearchUrl;
+  });
+}
+
 
     // Stats for AI
     const prices = flights.map((f) => f.price);
