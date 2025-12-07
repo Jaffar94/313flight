@@ -118,17 +118,23 @@ function heuristicAdvice({ daysUntilDeparture, minPrice, avgPrice, maxPrice }) {
  */
 async function learningAdvice({ origin, destination, departureDate }) {
   try {
-    // Retrieve history from price_history table (Postgres).
-    // IMPORTANT: Postgres-style placeholders ($1, $2, $3) – not "?".
+    // Use month of departure for a "seasonal" view
+    // and only consider searches from the last 90 days (recent market regime)
     const rows = await all(
       `
         SELECT days_until_departure, avg_price
         FROM price_history
-        WHERE origin = $1 AND destination = $2 AND departure_date = $3
-        ORDER BY days_until_departure ASC
+        WHERE origin = $1
+          AND destination = $2
+          AND EXTRACT(MONTH FROM departure_date) = EXTRACT(MONTH FROM $3::date)
+          AND search_date >= CURRENT_DATE - INTERVAL '90 days'
+        ORDER BY days_until_departure DESC
       `,
       [origin, destination, departureDate]
     );
+    
+    // ... rest of learningAdvice stays the same ...
+
 
     if (!rows || rows.length < 3) {
       return {
