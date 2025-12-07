@@ -16,5 +16,11 @@
     "name": "Hamad International Airport",
     "cityName": "Doha",
     "countryName": "Qatar"
+  },
+  {
+    "iataCode": "RUH",
+    "name": "King Khalid International Airport (KKIA)",
+    "cityName": "Riyadh",
+    "countryName": "Qatar"
   }
 ]
