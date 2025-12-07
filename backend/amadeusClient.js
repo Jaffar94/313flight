@@ -6,6 +6,8 @@ const axios = require('axios');
 const AMA_ID = process.env.AMADEUS_CLIENT_ID;
 const AMA_SECRET = process.env.AMADEUS_CLIENT_SECRET;
 
+const AMA_BASE = "https://test.api.amadeus.com"; 
+
 let token = null;
 let tokenExpires = 0;
 
@@ -13,13 +15,14 @@ async function auth() {
   if (token && Date.now() < tokenExpires) return token;
 
   const res = await axios.post(
-    "https://test.api.amadeus.com/v1/security/oauth2/token",
-    new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: AMA_ID,
-      client_secret: AMA_SECRET,
-    })
-  );
+  `${AMA_BASE}/v1/security/oauth2/token`,
+  new URLSearchParams({
+    grant_type: "client_credentials",
+    client_id: AMA_ID,
+    client_secret: AMA_SECRET,
+  })
+);
+
 
   token = res.data.access_token;
   tokenExpires = Date.now() + res.data.expires_in * 900;
@@ -31,8 +34,9 @@ async function auth() {
 async function searchLocations(query) {
   const t = await auth();
   const url =
-    "https://test.api.amadeus.com/v1/reference-data/locations?subType=CITY,AIRPORT&keyword=" +
-    encodeURIComponent(query);
+  `${AMA_BASE}/v1/reference-data/locations?subType=CITY,AIRPORT&keyword=` +
+  encodeURIComponent(query);
+
 
   const res = await axios.get(url, {
     headers: { Authorization: `Bearer ${t}` },
@@ -71,7 +75,8 @@ async function searchFlights({
 
   if (returnDate) params.returnDate = returnDate;
 
-  const url = "https://test.api.amadeus.com/v2/shopping/flight-offers";
+  const url = `${AMA_BASE}/v2/shopping/flight-offers`;
+
 
   const res = await axios.get(url, {
     params,
