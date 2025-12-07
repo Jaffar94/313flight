@@ -447,6 +447,27 @@ app.get('/api/stats', async (req, res) => {
     });
   }
 });
+// DEBUG: directly test SerpApi from the backend
+app.get('/api/debug-serp', async (req, res) => {
+  try {
+    const flights = await searchSerpFlights({
+      originCode: 'DEL',
+      destinationCode: 'DXB',
+      departureDate: '2026-02-01',
+      returnDate: null,
+      adults: 1,
+      cabin: 'ECONOMY',
+      currency: 'INR',
+    });
+
+    res.json({
+      count: flights.length,
+      sample: flights.slice(0, 3),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Fallback: serve SPA
 app.get('*', (req, res) => {
