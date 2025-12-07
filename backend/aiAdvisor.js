@@ -2,7 +2,7 @@
 // Heuristic + Seasonal AI logic (lightweight DB usage)
 
 // Only import db helpers — db does NOT import us → NO circular deps
-const { all, run } = require('./db');
+const { all, run } = require("./db");
 
 /* Airline code → full name */
 const AIRLINE_MAP = {
@@ -45,8 +45,7 @@ const AIRLINE_MAP = {
 
   // Sri Lanka / Nepal / Maldives / Region
   UL: "SriLankan Airlines",
-  "4Y": "Hi Fly",        // often operates charters via region
-  KTM: "Yeti Airlines", // not an IATA code, flights usually show as 'YT', kept for safety
+  "4Y": "Hi Fly", // often operates charters via region
 
   // Big global carriers (nice to have)
   BA: "British Airways",
@@ -55,7 +54,6 @@ const AIRLINE_MAP = {
   AF: "Air France",
   KL: "KLM",
   TK: "Turkish Airlines",
-  QR: "Qatar Airways", // already above, kept here for clarity
   SQ: "Singapore Airlines",
   CX: "Cathay Pacific",
   MH: "Malaysia Airlines",
@@ -85,42 +83,88 @@ function formatDuration(iso) {
 }
 
 /* -------------------------------------
-   HEURISTIC ADVICE
+   PRICE POSITION (within this search)
 -------------------------------------- */
-function heuristicAdvice({ daysUntilDeparture, minPrice, avgPrice, maxPrice }) {
-  const spread = maxPrice - minPrice;
+function classifyPricePosition({ minPrice, avgPrice, maxPrice }) {
+  if (!minPrice || !avgPrice || !maxPrice) {
+    return { label: "UNKNOWN", note: "Not enough price data." };
+  }
 
-  // Close to departure
-  if (daysUntilDeparture <= 7) {
+  const range = maxPrice - minPrice;
+  if (range <= 0) {
+    return { label: "TYPICAL", note: "All options are priced very similarly." };
+  }
+
+  const distFromMin = avgPrice - minPrice;
+  const position = distFromMin / range; // 0 = at min, 1 = at max
+
+  if (position <= 0.25) {
     return {
-      action: "BOOK",
-      confidence: 80,
-      reason: "Close to departure; prices tend to rise and current fares look acceptable.",
+      label: "CHEAP",
+      note: "Today’s prices are on the cheaper side of what’s available right now.",
     };
   }
 
-  // Very far away
-  if (daysUntilDeparture > 30 && avgPrice > (minPrice * 1.2)) {
+  if (position >= 0.75) {
     return {
-      action: "WAIT",
-      confidence: 70,
-      reason: "Far from travel date and prices are above historical lows.",
-    };
-  }
-
-  // Middle window
-  if (spread < avgPrice * 0.05) {
-    return {
-      action: "BOOK",
-      confidence: 65,
-      reason: "Price range is tight; unlikely to fall much lower.",
+      label: "EXPENSIVE",
+      note: "Today’s prices are on the expensive side compared to other options for this search.",
     };
   }
 
   return {
+    label: "TYPICAL",
+    note: "Prices look fairly typical compared to other options for this search.",
+  };
+}
+
+/* -------------------------------------
+   HEURISTIC ADVICE
+-------------------------------------- */
+function heuristicAdvice({ daysUntilDeparture, minPrice, avgPrice, maxPrice }) {
+  const spread = maxPrice - minPrice;
+  const pricePos = classifyPricePosition({ minPrice, avgPrice, maxPrice });
+
+  // Close to departure → usually better to book
+  if (daysUntilDeparture <= 7) {
+    return {
+      action: "BOOK",
+      confidence: 80,
+      reason:
+        "You’re close to departure. For most routes, prices tend to rise in the last week, and current fares look acceptable.",
+      pricePosition: pricePos,
+    };
+  }
+
+  // Very far away and clearly expensive → lean toward waiting
+  if (daysUntilDeparture > 30 && pricePos.label === "EXPENSIVE") {
+    return {
+      action: "WAIT",
+      confidence: 70,
+      reason:
+        "You’re still far from your travel date and today’s prices look expensive compared to other options for this search.",
+      pricePosition: pricePos,
+    };
+  }
+
+  // Narrow spread → not much upside to waiting
+  if (spread < avgPrice * 0.05) {
+    return {
+      action: "BOOK",
+      confidence: 65,
+      reason:
+        "All the available fares are clustered around a similar price, so there may not be much advantage in waiting.",
+      pricePosition: pricePos,
+    };
+  }
+
+  // Default: mild wait suggestion
+  return {
     action: "WAIT",
     confidence: 55,
-    reason: "Moderate price variability; waiting may yield better prices.",
+    reason:
+      "There is still some price variation for this search, so waiting a bit could reveal a better fare if your dates are flexible.",
+    pricePosition: pricePos,
   };
 }
 
@@ -136,15 +180,16 @@ async function updateSeasonalStats({
 }) {
   try {
     const month = new Date(departureDate).getMonth() + 1;
-
     const isFar = daysUntilDeparture >= 30;
     const isNear = daysUntilDeparture <= 7;
 
-    if (!isFar && !isNear) return; // ignore mid-range
+    // Only learn from "far" and "near" points; ignore mid-range
+    if (!isFar && !isNear) return;
 
     const price = avgPrice;
 
-    await run(`
+    await run(
+      `
       INSERT INTO seasonal_stats (origin, destination, month,
                                   total_points,
                                   far_sum, far_count,
@@ -158,10 +203,10 @@ async function updateSeasonalStats({
       ON CONFLICT (origin, destination, month)
       DO UPDATE SET
         total_points = seasonal_stats.total_points + 1,
-        far_sum  = seasonal_stats.far_sum  + EXCLUDED.far_sum,
-        far_count = seasonal_stats.far_count + EXCLUDED.far_count,
-        near_sum = seasonal_stats.near_sum + EXCLUDED.near_sum,
-        near_count = seasonal_stats.near_count + EXCLUDED.near_count,
+        far_sum      = seasonal_stats.far_sum  + EXCLUDED.far_sum,
+        far_count    = seasonal_stats.far_count + EXCLUDED.far_count,
+        near_sum     = seasonal_stats.near_sum + EXCLUDED.near_sum,
+        near_count   = seasonal_stats.near_count + EXCLUDED.near_count,
         last_updated = NOW();
     `,
       [
@@ -174,7 +219,6 @@ async function updateSeasonalStats({
         isNear ? 1 : 0,
       ]
     );
-
   } catch (err) {
     console.error("Seasonal stats update failed:", err.message);
   }
@@ -187,7 +231,7 @@ async function learningAdvice({ origin, destination, departureDate }) {
   try {
     const month = new Date(departureDate).getMonth() + 1;
 
-    const row = await all(
+    const rows = await all(
       `
         SELECT *
         FROM seasonal_stats
@@ -199,42 +243,61 @@ async function learningAdvice({ origin, destination, departureDate }) {
       [origin, destination, month]
     );
 
-    if (!row.length) {
-      return { action: "NO_SIGNAL", reason: "No recent seasonal data", confidence: 0 };
+    if (!rows.length) {
+      return {
+        action: "NO_SIGNAL",
+        reason: "We don’t have enough recent seasonal data for this route and month yet.",
+        confidence: 0,
+      };
     }
 
-    const stats = row[0];
+    const stats = rows[0];
 
     if (stats.far_count < 2 || stats.near_count < 2) {
-      return { action: "NO_SIGNAL", reason: "Not enough trend data", confidence: 0 };
+      return {
+        action: "NO_SIGNAL",
+        reason: "We’ve seen this route, but not often enough to trust a trend yet.",
+        confidence: 0,
+      };
     }
 
     const farAvg = stats.far_sum / stats.far_count;
     const nearAvg = stats.near_sum / stats.near_count;
-
     const change = (nearAvg - farAvg) / farAvg;
 
+    // No strong trend
     if (Math.abs(change) < 0.05) {
-      return { action: "NO_SIGNAL", reason: "Seasonal trend too weak", confidence: 40 };
-    }
-
-    if (change > 0.08) {
       return {
-        action: "BOOK",
-        confidence: 75,
-        reason: "Historical seasonal trend: prices rise closer to departure.",
+        action: "NO_SIGNAL",
+        reason: "Seasonal price changes for this route look small, so there’s no strong pattern.",
+        confidence: 40,
       };
     }
 
+    if (change > 0.08) {
+      // Prices rise near departure
+      return {
+        action: "BOOK",
+        confidence: 75,
+        reason:
+          "Historically, prices for this route have risen as departure approaches, especially in this month.",
+      };
+    }
+
+    // Prices drop near departure
     return {
       action: "WAIT",
       confidence: 70,
-      reason: "Historical seasonal trend: prices tend to drop as the date approaches.",
+      reason:
+        "Historically, prices for this route have tended to be lower closer to departure in this month.",
     };
-
   } catch (e) {
     console.error("learningAdvice failed:", e.message);
-    return { action: "NO_SIGNAL", reason: "AI error", confidence: 0 };
+    return {
+      action: "NO_SIGNAL",
+      reason: "We couldn’t load seasonal data, so we’re skipping that signal.",
+      confidence: 0,
+    };
   }
 }
 
@@ -264,53 +327,53 @@ async function blendedAdvice({
 
   const seasonal = await learningAdvice({ origin, destination, departureDate });
 
-  // If both agree
-  if (seasonal.action !== "NO_SIGNAL" && seasonal.action === heuristic.action) {
-    return {
-      action: heuristic.action,
-      confidence: Math.min(100, heuristic.confidence + 10),
-      explanation: "Heuristic and seasonal trends both agree.",
-      heuristic,
-      learning: seasonal,
-      bestDeal: bestFlight,
-    };
-  }
+  let action = "NO_SIGNAL";
+  let confidence = 40;
+  let explanation = "";
 
-  // If seasonal has signal and heuristic does not
+  // If both agree and both have a signal
   if (
     seasonal.action !== "NO_SIGNAL" &&
-    heuristic.action === "NO_SIGNAL"
-  ) {
-    return {
-      action: seasonal.action,
-      confidence: seasonal.confidence,
-      explanation: "Seasonal trend detected; heuristic uncertain.",
-      heuristic,
-      learning: seasonal,
-      bestDeal: bestFlight,
-    };
-  }
-
-  // If heuristic has signal but seasonal does not
-  if (
     heuristic.action !== "NO_SIGNAL" &&
-    seasonal.action === "NO_SIGNAL"
+    seasonal.action === heuristic.action
   ) {
-    return {
-      action: heuristic.action,
-      confidence: heuristic.confidence,
-      explanation: "Heuristic confident; seasonal trend not clear.",
-      heuristic,
-      learning: seasonal,
-      bestDeal: bestFlight,
-    };
+    action = heuristic.action;
+    confidence = Math.min(95, Math.max(heuristic.confidence, seasonal.confidence) + 5);
+    explanation =
+      action === "BOOK"
+        ? "Both today’s prices and recent seasonal trends suggest it’s a good time to book."
+        : "Both today’s prices and recent seasonal trends suggest it’s reasonable to wait a bit if your dates are flexible.";
+  }
+  // If seasonal has signal and heuristic does not
+  else if (seasonal.action !== "NO_SIGNAL" && heuristic.action === "NO_SIGNAL") {
+    action = seasonal.action;
+    confidence = seasonal.confidence || 60;
+    explanation =
+      action === "BOOK"
+        ? "Based on historical price patterns for this route and month, it’s safer to book now."
+        : "Based on historical price patterns for this route and month, it may be worth waiting a bit.";
+  }
+  // If heuristic has signal but seasonal does not
+  else if (heuristic.action !== "NO_SIGNAL" && seasonal.action === "NO_SIGNAL") {
+    action = heuristic.action;
+    confidence = heuristic.confidence || 60;
+    explanation =
+      action === "BOOK"
+        ? "Given how today’s prices compare within this search and how close you are to departure, it makes sense to book."
+        : "Given today’s price spread and days until departure, there’s some room to wait if you’re flexible.";
+  }
+  // If both weak or conflicting
+  else {
+    action = "NO_SIGNAL";
+    confidence = 40;
+    explanation =
+      "We don’t see a strong pattern from today’s prices or seasonal trends, so there’s no strong AI signal either way.";
   }
 
-  // If both weak
   return {
-    action: "NO_SIGNAL",
-    confidence: 40,
-    explanation: "No strong signals available.",
+    action,
+    confidence,
+    explanation,
     heuristic,
     learning: seasonal,
     bestDeal: bestFlight,
