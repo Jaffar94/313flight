@@ -10,9 +10,8 @@ if (!process.env.DATABASE_URL) {
 // Create a connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Neon requires SSL
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // Neon uses SSL
   },
 });
 
