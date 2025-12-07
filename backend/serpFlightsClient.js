@@ -44,7 +44,7 @@ async function searchSerpFlights({
       adults,
       travel_class: travelClass,
       type: returnDate ? 1 : 2, // 1=round, 2=one-way
-      deep_search: true,        // 🔥 Ensures IndiGo & LCC flights appear
+      deep_search: true,
       gl: "in",
       hl: "en",
     };
@@ -65,7 +65,7 @@ async function searchSerpFlights({
         const seg = f.flights?.[0];
         if (!seg) return null;
 
-        // Extract airline & carrier
+        // Extract airline / carrier
         const rawFlightNumber = seg.flight_number || "";
         const carrier = rawFlightNumber.split(" ")[0] || null;
 
@@ -85,13 +85,19 @@ async function searchSerpFlights({
           seg.arrival_airport?.time ||
           null;
 
-        // 🔧 Robust stops handling (fix for "undefined stops")
+        // 🔧 Robust stops handling:
+        // 1) use numeric f.stops if present
+        // 2) else derive from number of segments
+        // 3) else parse string like "1 stop"
         let stopsCount = 0;
 
         if (typeof f.stops === "number") {
           stopsCount = f.stops;
+        } else if (Array.isArray(f.flights) && f.flights.length > 0) {
+          // if there are 2 flights segments, that means 1 stop, etc.
+          stopsCount = Math.max(0, f.flights.length - 1);
         } else if (typeof f.stops === "string") {
-          const m = f.stops.match(/\d+/); // extracts 1 from "1 stop"
+          const m = f.stops.match(/\d+/);
           stopsCount = m ? parseInt(m[0], 10) : 0;
         } else {
           stopsCount = 0;
@@ -112,7 +118,7 @@ async function searchSerpFlights({
           bookingUrl: googleUrl,
         };
       })
-      .filter((f) => f && f.price > 0); // keep valid flights only
+      .filter((f) => f && f.price > 0);
 
     return flights;
   } catch (err) {
