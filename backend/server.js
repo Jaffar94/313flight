@@ -21,7 +21,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: '313flight', db: 'SQLite' });
 });
 
-// Locations
+// Locations (autocomplete)
 app.get('/api/locations', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
@@ -43,6 +43,15 @@ app.get('/api/locations', async (req, res) => {
   }
 });
 
+/**
+ * Build a Google Flights URL that pre-fills:
+ *  - origin airport
+ *  - destination airport
+ *  - departure date (YYYY-MM-DD)
+ *
+ * Example format:
+ *   https://www.google.com/travel/flights#search;f=DEL;t=DXB;d=2025-12-01;
+ */
 function buildGoogleFlightsUrl(originCode, destinationCode, departTimeIso) {
   // departTimeIso example: "2025-12-01T10:00:00"
   const departDate = (departTimeIso || '').substring(0, 10); // YYYY-MM-DD
@@ -53,7 +62,7 @@ function buildGoogleFlightsUrl(originCode, destinationCode, departTimeIso) {
   )};d=${departDate};`;
 }
 
-// Normalize Amadeus flight offer
+// Normalize Amadeus flight offer into frontend shape
 function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
   try {
     const itinerary = offer.itineraries[0];
@@ -72,7 +81,7 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
     const duration = formatDuration(itinerary.duration);
     const price = parseFloat(offer.price.grandTotal || offer.price.total || 0);
 
-    // ✅ New, stronger deep link: origin + destination + correct departure date
+    // Google Flights deep link with same route + date as the selected flight
     const bookingUrl = buildGoogleFlightsUrl(originCode, destinationCode, departTime);
 
     return {
@@ -94,8 +103,7 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
   }
 }
 
-
-// Record history
+// Record price history snapshot in SQLite
 async function recordPriceHistory({
   origin,
   destination,
@@ -116,13 +124,13 @@ async function recordPriceHistory({
   const search_date = today.toISOString().substring(0, 10);
   const depDate = new Date(departureDate);
   const diffDays = Math.round((depDate - today) / (1000 * 60 * 60 * 24));
-
   const created_at = new Date().toISOString();
 
   await run(
     `
       INSERT INTO price_history
-      (origin, destination, departure_date, search_date, days_until_departure, min_price, avg_price, max_price, currency, created_at)
+      (origin, destination, departure_date, search_date, days_until_departure,
+       min_price, avg_price, max_price, currency, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
@@ -142,7 +150,7 @@ async function recordPriceHistory({
   return { min_price, avg_price, max_price, days_until_departure: diffDays };
 }
 
-// Flexible dates helper
+// Flexible dates helper (Amadeus only, for now)
 async function getFlexibleDateSummary({
   originCode,
   destinationCode,
@@ -181,7 +189,9 @@ async function getFlexibleDateSummary({
         .filter(Boolean);
 
       if (!normalized.length) continue;
+
       const minPrice = Math.min(...normalized.map((f) => f.price));
+
       flexResults.push({
         date: flexDateStr,
         offset,
@@ -197,7 +207,7 @@ async function getFlexibleDateSummary({
   return flexResults.sort((a, b) => a.offset - b.offset);
 }
 
-// /api/flights
+// /api/flights – main search + AI + flexible dates
 app.post('/api/flights', async (req, res) => {
   try {
     const {
@@ -214,6 +224,7 @@ app.post('/api/flights', async (req, res) => {
       flexibleDates,
     } = req.body;
 
+    // Basic validation
     if (!originCode || !destinationCode) {
       return res.status(400).json({ error: 'Origin and destination are required.' });
     }
@@ -243,6 +254,7 @@ app.post('/api/flights', async (req, res) => {
 
     const adults = Math.min(Math.max(parseInt(travelers, 10) || 1, 1), 9);
 
+    // Call Amadeus
     const apiRes = await searchFlights({
       originCode,
       destinationCode,
@@ -266,12 +278,17 @@ app.post('/api/flights', async (req, res) => {
       });
     }
 
+    // Basic stats for AI
     const prices = flights.map((f) => f.price);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const bestFlight = flights.reduce((best, f) => (f.price < best.price ? f : best), flights[0]);
+    const bestFlight = flights.reduce(
+      (best, f) => (f.price < best.price ? f : best),
+      flights[0]
+    );
 
+    // Record history snapshot
     await recordPriceHistory({
       origin: originCode,
       destination: destinationCode,
@@ -280,6 +297,7 @@ app.post('/api/flights', async (req, res) => {
       flights,
     });
 
+    // AI blended advice
     const todayStr = today.toISOString().substring(0, 10);
     const model = await blendedAdvice({
       origin: originCode,
@@ -292,6 +310,7 @@ app.post('/api/flights', async (req, res) => {
       bestFlight,
     });
 
+    // Flexible dates: Amadeus-only
     let flexSummary = [];
     if (flexibleDates) {
       flexSummary = await getFlexibleDateSummary({
@@ -330,7 +349,7 @@ app.post('/api/flights', async (req, res) => {
   }
 });
 
-// /api/history
+// /api/history – return historical price snapshots
 app.get('/api/history', async (req, res) => {
   try {
     const { origin, destination, departDate } = req.query;
@@ -359,18 +378,18 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
-// /api/stats
+// /api/stats – basic learning stats
 app.get('/api/stats', async (req, res) => {
   try {
     const totalRow = await get('SELECT COUNT(*) as count FROM price_history', []);
     const topRoutes = await all(
       `
-      SELECT origin, destination, COUNT(*) as count
-      FROM price_history
-      GROUP BY origin, destination
-      ORDER BY count DESC
-      LIMIT 5
-    `
+        SELECT origin, destination, COUNT(*) as count
+        FROM price_history
+        GROUP BY origin, destination
+        ORDER BY count DESC
+        LIMIT 5
+      `
     );
 
     res.json({
