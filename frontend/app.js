@@ -360,17 +360,18 @@ function renderFlights(list) {
     dur.textContent = f.duration || '';
 
     const stops = document.createElement('span');
-    stops.className =
-      'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem]';
+stops.className =
+  'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem]';
 
-    // normalise stop count
-    const stopCount =
-      typeof f.stops === 'number' ? f.stops : (f.nonstop ? 0 : 0);
+// 🔧 trust only numeric stops from backend; if missing, assume 0
+const stopCount =
+  typeof f.stops === 'number' ? f.stops : 0;
 
-    stops.textContent =
-      stopCount === 0
-        ? 'Non-stop'
-        : `${stopCount} stop${stopCount === 1 ? '' : 's'}`;
+stops.textContent =
+  stopCount === 0
+    ? 'Non-stop'
+    : `${stopCount} stop${stopCount === 1 ? '' : 's'}`;
+
 
     metaRow.appendChild(dur);
     metaRow.appendChild(stops);
@@ -444,15 +445,16 @@ function applyFiltersAndRender() {
   let list = [...state.flightsRaw];
 
   // stops filter
-  const stopsFilter = stopsSelect.value;
-  list = list.filter((f) => {
-    const stopCount =
-      typeof f.stops === 'number' ? f.stops : (f.nonstop ? 0 : 0);
+const stopsFilter = stopsSelect.value;
+list = list.filter((f) => {
+  const stopCount =
+    typeof f.stops === 'number' ? f.stops : 0;
 
-    if (stopsFilter === 'nonstop') return stopCount === 0;
-    if (stopsFilter === 'stops') return stopCount > 0;
-    return true;
-  });
+  if (stopsFilter === 'nonstop') return stopCount === 0;
+  if (stopsFilter === 'stops') return stopCount > 0;
+  return true;
+});
+
 
   // airline filter
   const activeAirlines = getActiveAirlines();
