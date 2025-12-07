@@ -45,19 +45,17 @@ app.get('/api/locations', async (req, res) => {
 
 /**
  * Build a Google Flights URL that pre-fills:
- *  - origin airport
- *  - destination airport
- *  - departure date (YYYY-MM-DD)
+ *  - origin airport (f=)
+ *  - destination airport (t=)
+ *  - departure date (d=YYYY-MM-DD)
  *
- * Example format:
- *   https://www.google.com/travel/flights#search;f=DEL;t=DXB;d=2025-12-01;
+ * Uses the classic flights URL:
+ *   https://www.google.com/flights/#search;f=DEL;t=DXB;d=2025-12-01;
  */
 function buildGoogleFlightsUrl(originCode, destinationCode, departTimeIso) {
-  // departTimeIso example: "2025-12-01T10:00:00"
   const departDate = (departTimeIso || '').substring(0, 10); // YYYY-MM-DD
-  const base = 'https://www.google.com/travel/flights';
-  // Hash format: #search;f=ORIGIN;t=DEST;d=YYYY-MM-DD;
-  return `${base}#search;f=${encodeURIComponent(originCode)};t=${encodeURIComponent(
+  const base = 'https://www.google.com/flights';
+  return `${base}/#search;f=${encodeURIComponent(originCode)};t=${encodeURIComponent(
     destinationCode
   )};d=${departDate};`;
 }
