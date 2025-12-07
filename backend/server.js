@@ -7,6 +7,8 @@ const cors = require("cors");
 const { run, all, get } = require("./db");
 const { searchLocations, searchFlights } = require("./amadeusClient");
 const { searchSerpFlights } = require("./serpFlightsClient");
+const { searchLocalAirports } = require("./localAirports");
+
 const {
   airlineNameFromCode,
   formatDuration,
@@ -38,32 +40,46 @@ app.get("/api/health", async (req, res) => {
    LOCATIONS (autocomplete)
 ---------------------------------------------------------- */
 app.get("/api/locations", async (req, res) => {
+  const q = req.query.q;
+
+  if (!q || q.length < 2) {
+    return res.json({ locations: [] });
+  }
+
   try {
-    const q = (req.query.q || "").trim();
-    if (!q) return res.json({ locations: [] });
+    // Run both in parallel
+    const [amadeusLocations, localLocations] = await Promise.all([
+      searchLocations(q).catch((e) => {
+        console.error("Amadeus location error:", e.response?.status, e.response?.data || e.message);
+        return []; // fail soft, don’t kill the whole request
+      }),
+      Promise.resolve(searchLocalAirports(q)),
+    ]);
 
-    // Amadeus first
-    const ama = await searchLocations(q);
+    // Merge & dedupe by IATA code + city
+    const combinedMap = new Map();
 
-    // Dedup
-    const map = new Map();
-    for (const loc of ama) {
-      if (loc.iataCode) {
-        map.set(loc.iataCode, {
-          iataCode: loc.iataCode,
-          cityName: loc.cityName,
-          countryName: loc.countryName,
-          label: `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`,
-        });
+    function addList(list) {
+      for (const loc of list) {
+        const key = `${loc.iataCode || ""}-${(loc.cityName || "").toLowerCase()}`;
+        if (!combinedMap.has(key)) {
+          combinedMap.set(key, loc);
+        }
       }
     }
 
-    res.json({ locations: Array.from(map.values()) });
+    addList(amadeusLocations);
+    addList(localLocations);
+
+    const locations = Array.from(combinedMap.values());
+
+    res.json({ locations });
   } catch (err) {
     console.error("Location error:", err.message);
-    res.status(500).json({ error: "Unable to fetch locations." });
+    res.status(500).json({ error: "Location lookup failed" });
   }
 });
+
 
 /* ----------------------------------------------------------
    Normalize Amadeus Flight
