@@ -259,14 +259,7 @@
               </div>
             </div>
 
-            <div id="stats-panel" class="mt-5 border-t border-slate-800 pt-3 text-xs space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-slate-400 text-[11px]">Learning stats</span>
-                <span class="text-[11px] text-slate-500">DB: SQLite</span>
-              </div>
-              <p id="stats-summary" class="text-slate-200">Loading stats…</p>
-              <ul id="stats-routes" class="text-slate-400 space-y-1"></ul>
-            </div>
+            
           </div>
         </div>
       </section>
@@ -370,8 +363,6 @@
     const aiLearning = document.getElementById('ai-learning');
     const aiBestDeal = document.getElementById('ai-best-deal');
 
-    const statsSummary = document.getElementById('stats-summary');
-    const statsRoutes = document.getElementById('stats-routes');
 
     const historyCommentary = document.getElementById('history-commentary');
 
@@ -791,24 +782,7 @@
         });
     }
 
-    // Stats panel
-    function loadStats() {
-      fetch(`${API_BASE}/api/stats`)
-        .then(res => res.json())
-        .then(data => {
-          statsSummary.textContent = `Stored history points: ${data.totalHistoryPoints || 0}`;
-          statsRoutes.innerHTML = '';
-          (data.topRoutes || []).forEach(r => {
-            const li = document.createElement('li');
-            li.textContent = `${r.origin} → ${r.destination} (${r.count})`;
-            statsRoutes.appendChild(li);
-          });
-        })
-        .catch(() => {
-          statsSummary.textContent = 'Stats unavailable right now.';
-        });
-    }
-    loadStats();
+    
 
     sortSelect.addEventListener('change', renderFlights);
     stopsSelect.addEventListener('change', renderFlights);
@@ -927,9 +901,8 @@
         resultsError.classList.remove('hidden');
         resultsEmpty.classList.add('hidden');
       } finally {
-        resultsLoading.classList.add('hidden');
-        loadStats();
-      }
+  resultsLoading.classList.add('hidden');
+}
     });
   </script>
 
