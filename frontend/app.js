@@ -163,7 +163,8 @@ originInput.addEventListener(
     }
     const locs = await fetchLocations(q);
     renderSuggestions(originSuggestions, locs, (loc) => {
-      originInput.value = loc.label;
+      originInput.value =
+        loc.label || `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`;
       originCodeInput.value = loc.iataCode;
       state.origin = loc;
     });
@@ -183,7 +184,8 @@ destinationInput.addEventListener(
     }
     const locs = await fetchLocations(q);
     renderSuggestions(destinationSuggestions, locs, (loc) => {
-      destinationInput.value = loc.label;
+      destinationInput.value =
+        loc.label || `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`;
       destinationCodeInput.value = loc.iataCode;
       state.destination = loc;
     });
