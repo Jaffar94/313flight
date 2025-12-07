@@ -326,20 +326,27 @@ function renderFlights(list) {
       carrier ||
       "Unknown airline";
 
-    const carrier = f.carrierCode;
+        const carrier = f.carrierCode;
+    const airlineName =
+      f.airline ||      // backend-pretty name if present
+      carrier ||        // at least show the code
+      "Unknown airline";
 
-const airlineName =
-  f.airline ||      // backend-pretty name if present
-  carrier ||        // at least show the code
-  "Unknown airline";
+    const airline = document.createElement('span');
+    airline.className = 'font-semibold text-slate-100';
+    airline.textContent = airlineName;
 
-const airline = document.createElement('span');
-airline.className = 'font-semibold text-slate-100';
-airline.textContent = airlineName;
+    const fn = document.createElement('span');
+    fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
+    fn.textContent = f.flightNumber || '';
 
-badge.textContent = (carrier || airlineName || "??")
-  .slice(0, 3)
-  .toUpperCase();
+    titleRow.appendChild(airline);
+    titleRow.appendChild(fn);
+
+    // badge:
+    badge.textContent = (carrier || airlineName || "??")
+      .slice(0, 3)
+      .toUpperCase();
 
 
 
