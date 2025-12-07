@@ -1,3 +1,4 @@
+// backend/server.js
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
@@ -12,12 +13,15 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+// Serve frontend
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: '313flight', db: 'SQLite' });
 });
 
+// Locations
 app.get('/api/locations', async (req, res) => {
   try {
     const q = (req.query.q || '').trim();
@@ -39,6 +43,7 @@ app.get('/api/locations', async (req, res) => {
   }
 });
 
+// Normalize Amadeus flight offer
 function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
   try {
     const itinerary = offer.itineraries[0];
@@ -78,6 +83,7 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
   }
 }
 
+// Record history
 async function recordPriceHistory({
   origin,
   destination,
@@ -124,6 +130,7 @@ async function recordPriceHistory({
   return { min_price, avg_price, max_price, days_until_departure: diffDays };
 }
 
+// Flexible dates helper
 async function getFlexibleDateSummary({
   originCode,
   destinationCode,
@@ -178,6 +185,7 @@ async function getFlexibleDateSummary({
   return flexResults.sort((a, b) => a.offset - b.offset);
 }
 
+// /api/flights
 app.post('/api/flights', async (req, res) => {
   try {
     const {
@@ -310,6 +318,7 @@ app.post('/api/flights', async (req, res) => {
   }
 });
 
+// /api/history
 app.get('/api/history', async (req, res) => {
   try {
     const { origin, destination, departDate } = req.query;
@@ -338,6 +347,7 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
+// /api/stats
 app.get('/api/stats', async (req, res) => {
   try {
     const totalRow = await get('SELECT COUNT(*) as count FROM price_history', []);
@@ -364,6 +374,7 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Fallback: serve SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
 });
