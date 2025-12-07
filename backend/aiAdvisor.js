@@ -3,21 +3,45 @@ const { all } = require('./db');
 
 // Airline code → name map
 const AIRLINES = {
+  // Middle East & India region
   EK: 'Emirates',
+  FZ: 'flydubai',
+  EY: 'Etihad Airways',
+  GF: 'Gulf Air',
+  SV: 'Saudia',
+  WY: 'Oman Air',
   QR: 'Qatar Airways',
+  G9: 'Air Arabia',
+  IX: 'Air India Express',
   AI: 'Air India',
   '6E': 'IndiGo',
+  UK: 'Vistara',
+  SG: 'SpiceJet',
+
+  // Europe / global majors
   BA: 'British Airways',
   LH: 'Lufthansa',
   AF: 'Air France',
   KL: 'KLM Royal Dutch Airlines',
+  TK: 'Turkish Airlines',
+  LX: 'SWISS International Air Lines',
+  OS: 'Austrian Airlines',
+
+  // Asia-Pacific
   SQ: 'Singapore Airlines',
   CX: 'Cathay Pacific',
-  QF: 'Qantas',
+  MH: 'Malaysia Airlines',
+  GA: 'Garuda Indonesia',
+  JL: 'Japan Airlines',
+  NH: 'ANA All Nippon Airways',
+
+  // North America
   UA: 'United Airlines',
   AA: 'American Airlines',
   DL: 'Delta Air Lines',
+  AC: 'Air Canada',
 };
+
 
 function airlineNameFromCode(code) {
   return AIRLINES[code] || code;
