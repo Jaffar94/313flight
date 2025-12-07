@@ -4,907 +4,331 @@
   <meta charset="UTF-8" />
   <title>313flight – Created by Jaffar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Trends & History -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      background: radial-gradient(circle at top left, #1f2933, #020617);
+      background: radial-gradient(circle at top, #0f172a, #020617);
       color: #e5e7eb;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     }
     .glass {
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.8);
       backdrop-filter: blur(16px);
-      border: 1px solid rgba(148, 163, 184, 0.25);
+      border: 1px solid rgba(148, 163, 184, 0.3);
     }
-    .tab-active {
-      background: rgba(148, 163, 184, 0.2);
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
     }
-    .scroll-y-soft {
-      scrollbar-width: thin;
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 999px;
     }
   </style>
 </head>
 <body class="h-full">
   <div class="min-h-screen flex flex-col">
-    <header class="px-4 sm:px-8 py-4 flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-          <span class="bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-indigo-300">
-            313flight
+    <!-- Header -->
+    <header class="glass shadow-lg border-b border-slate-700 sticky top-0 z-30">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center text-slate-900 font-bold">
+            313
+          </div>
+          <div>
+            <h1 class="text-xl md:text-2xl font-semibold tracking-tight">313flight</h1>
+            <p class="text-xs text-slate-400">Created by Jaffar · AI-powered flight price advisor</p>
+          </div>
+        </div>
+        <div class="hidden sm:flex items-center gap-3 text-xs text-slate-400">
+          <span class="px-2 py-1 rounded-full bg-slate-900/60 border border-slate-700/60">
+            Backend: Node.js + Express
           </span>
-        </h1>
-        <p class="text-xs text-slate-400 mt-1">Created by Jaffar</p>
-      </div>
-      <div class="hidden sm:flex items-center gap-3 text-xs text-slate-400">
-        <span class="px-3 py-1 rounded-full border border-slate-600/70">
-          AI Price Advisor
-        </span>
-        <span class="px-3 py-1 rounded-full border border-slate-600/70">
-          DB: SQLite
-        </span>
+          <span class="px-2 py-1 rounded-full bg-slate-900/60 border border-slate-700/60">
+            DB: Neon Postgres
+          </span>
+        </div>
       </div>
     </header>
 
-    <div class="px-4 sm:px-8">
-      <div class="flex flex-wrap gap-2 bg-slate-900/60 rounded-2xl p-1 glass">
-        <button data-tab="search" class="tab-btn tab-active flex-1 px-4 py-2 rounded-xl text-sm font-medium">
+    <!-- Tabs -->
+    <nav class="max-w-6xl mx-auto w-full px-4 mt-4">
+      <div class="glass rounded-2xl p-1 flex text-sm">
+        <button id="tab-search"
+          class="flex-1 py-2 rounded-xl text-center transition font-medium bg-slate-800/80 text-sky-300">
           Search & Recommendations
         </button>
-        <button data-tab="trends" class="tab-btn flex-1 px-4 py-2 rounded-xl text-sm font-medium">
+        <button id="tab-history"
+          class="flex-1 py-2 rounded-xl text-center transition text-slate-400 hover:text-slate-100">
           Trends & History
         </button>
-        <button data-tab="about" class="tab-btn flex-1 px-4 py-2 rounded-xl text-sm font-medium">
+        <button id="tab-about"
+          class="hidden sm:block flex-1 py-2 rounded-xl text-center transition text-slate-400 hover:text-slate-100">
           About the AI
         </button>
       </div>
-    </div>
+    </nav>
 
-    <main class="flex-1 px-4 sm:px-8 pt-4 pb-8">
-      <section id="tab-search" class="tab-panel grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)]">
+    <!-- Main content -->
+    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-4 pb-10">
+      <!-- Global error -->
+      <div id="globalError" class="hidden mb-3 rounded-xl bg-red-900/40 border border-red-500/60 px-4 py-2 text-sm text-red-100"></div>
+
+      <!-- Search & Recommendations Panel -->
+      <section id="panel-search" class="mt-3 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)] gap-4">
+        <!-- Left: search & results -->
         <div class="space-y-4">
-          <div class="glass rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <h2 class="text-lg font-semibold">Search flights</h2>
-              <div class="flex items-center gap-2 text-xs text-slate-400">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                Live fares · AI insights
+          <!-- Search card -->
+          <div class="glass rounded-2xl p-4 shadow-md">
+            <form id="flightForm" class="space-y-4">
+              <!-- Trip type + flexible -->
+              <div class="flex flex-wrap items-center gap-3 justify-between">
+                <div class="inline-flex rounded-xl bg-slate-900/60 p-1 text-xs">
+                  <button type="button" data-trip="oneway"
+                          class="trip-toggle px-3 py-1.5 rounded-lg bg-sky-500 text-slate-900 font-medium">
+                    One-way
+                  </button>
+                  <button type="button" data-trip="round"
+                          class="trip-toggle px-3 py-1.5 rounded-lg text-slate-300">
+                    Round trip
+                  </button>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-300">
+                  <input id="flexibleToggle" type="checkbox"
+                         class="rounded border-slate-500 bg-slate-900/60 text-sky-400 focus:ring-sky-400">
+                  <span>Flexible dates: check ±3 days</span>
+                </label>
               </div>
-            </div>
 
-            <div class="flex gap-2 text-xs">
-              <button id="trip-oneway" class="flex-1 px-3 py-2 rounded-2xl border border-slate-700 bg-slate-800/70">
-                One-way
-              </button>
-              <button id="trip-round" class="flex-1 px-3 py-2 rounded-2xl border border-slate-700/50">
-                Round trip
-              </button>
-            </div>
+              <!-- Origin / Destination -->
+              <div class="grid md:grid-cols-2 gap-3">
+                <!-- Origin -->
+                <div class="relative">
+                  <label class="block text-xs text-slate-400 mb-1">From</label>
+                  <input id="originInput" autocomplete="off"
+                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                         placeholder="City or country (e.g. Dubai, India)" />
+                  <input type="hidden" id="originCode" />
+                  <div id="originSuggestions"
+                       class="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-xl glass text-xs hidden scrollbar-thin">
+                  </div>
+                  <p id="originError" class="mt-1 text-xs text-red-300 hidden"></p>
+                </div>
 
-            <div class="grid gap-3 sm:grid-cols-2">
-              <div class="relative">
-                <label class="block text-xs text-slate-400 mb-1">Origin</label>
-                <input id="origin-input" type="text" autocomplete="off"
-                       class="w-full rounded-2xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Delhi, India">
-                <div id="origin-suggestions" class="absolute z-20 mt-1 w-full rounded-2xl bg-slate-900/95 border border-slate-700 shadow-lg hidden max-h-56 overflow-auto text-sm"></div>
-                <p id="origin-error" class="text-xs text-rose-400 mt-1 hidden"></p>
+                <!-- Destination -->
+                <div class="relative">
+                  <label class="block text-xs text-slate-400 mb-1">To</label>
+                  <input id="destinationInput" autocomplete="off"
+                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                         placeholder="City or country (e.g. Riyadh, UK)" />
+                  <input type="hidden" id="destinationCode" />
+                  <div id="destinationSuggestions"
+                       class="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-xl glass text-xs hidden scrollbar-thin">
+                  </div>
+                  <p id="destinationError" class="mt-1 text-xs text-red-300 hidden"></p>
+                </div>
               </div>
-              <div class="relative">
-                <label class="block text-xs text-slate-400 mb-1">Destination</label>
-                <input id="destination-input" type="text" autocomplete="off"
-                       class="w-full rounded-2xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Dubai, United Arab Emirates">
-                <div id="destination-suggestions" class="absolute z-20 mt-1 w-full rounded-2xl bg-slate-900/95 border border-slate-700 shadow-lg hidden max-h-56 overflow-auto text-sm"></div>
-                <p id="destination-error" class="text-xs text-rose-400 mt-1 hidden"></p>
-              </div>
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Departure date</label>
-                <input id="depart-date" type="date"
-                       class="w-full rounded-2xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <p id="date-error" class="text-xs text-rose-400 mt-1 hidden"></p>
-              </div>
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Return date</label>
-                <input id="return-date" type="date"
-                       class="w-full rounded-2xl bg-slate-900/40 border border-slate-800 px-3 py-2 text-sm focus:outline-none"
-                       disabled>
-              </div>
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Travelers</label>
-                <input id="travelers" type="number" min="1" max="9" value="1"
-                       class="w-full rounded-2xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
-              </div>
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Cabin class</label>
-                <select id="cabin"
-                        class="w-full rounded-2xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
-                  <option value="ECONOMY" selected>Economy</option>
-                  <option value="PREMIUM_ECONOMY">Premium Economy</option>
-                  <option value="BUSINESS">Business</option>
-                  <option value="FIRST">First</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs text-slate-400 mb-1">Currency</label>
-                <select id="currency"
-                        class="w-full rounded-2xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="INR" selected>INR</option>
-                  <option value="GBP">GBP</option>
-                </select>
-              </div>
-              <div class="flex items-center gap-2 mt-5">
-                <input id="flexible-dates" type="checkbox"
-                       class="rounded border-slate-600 bg-slate-900 text-sky-500 focus:ring-sky-500">
-                <span class="text-xs text-slate-300">
-                  Flexible dates: also check cheaper options ±3 days
-                </span>
-              </div>
-            </div>
 
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-              <button id="search-btn"
-                      class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-sky-500 hover:bg-sky-400 text-slate-900 text-sm font-semibold shadow-lg shadow-sky-500/30">
-                <span>Search flights</span>
-                <span class="text-lg">✈️</span>
-              </button>
-              <div class="text-xs text-slate-400">
-                Live predictions are experimental. Always confirm prices before booking.
-              </div>
-            </div>
-          </div>
-
-          <div id="flex-strip" class="glass rounded-3xl p-3 sm:p-4 hidden">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-semibold">Flexible dates insights</h3>
-              <span class="text-[11px] text-slate-400">Cheapest options around your dates</span>
-            </div>
-            <div id="flex-strip-inner" class="flex gap-2 overflow-x-auto pb-1 text-xs"></div>
-          </div>
-
-          <div id="filters-container" class="glass rounded-3xl p-3 sm:p-4 hidden">
-            <div class="flex flex-wrap gap-3 items-center justify-between">
-              <div class="flex flex-wrap gap-2 text-xs">
+              <!-- Dates -->
+              <div class="grid md:grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-[11px] text-slate-400 mb-1">Sort by</label>
-                  <select id="sort-select"
-                          class="rounded-2xl bg-slate-900/80 border border-slate-700 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <option value="price">Price (low → high)</option>
-                    <option value="depart">Departure time</option>
-                    <option value="duration">Duration (shortest)</option>
+                  <label class="block text-xs text-slate-400 mb-1">Departure date</label>
+                  <input id="departureDate" type="date"
+                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                  <p id="departError" class="mt-1 text-xs text-red-300 hidden"></p>
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Return date</label>
+                  <input id="returnDate" type="date"
+                         class="w-full rounded-xl bg-slate-900/40 border border-slate-700/60 px-3 py-2 text-sm text-slate-400"
+                         disabled />
+                  <p id="returnError" class="mt-1 text-xs text-red-300 hidden"></p>
+                </div>
+              </div>
+
+              <!-- Travelers, cabin, currency -->
+              <div class="grid md:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Travelers</label>
+                  <input id="travelerCount" type="number" min="1" max="9" value="1"
+                         class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <div>
+                  <label class="block text-xs text-slate-400 mb-1">Cabin</label>
+                  <select id="cabinSelect"
+                          class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <option value="ECONOMY">Economy</option>
+                    <option value="PREMIUM_ECONOMY">Premium Economy</option>
+                    <option value="BUSINESS">Business</option>
+                    <option value="FIRST">First</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] text-slate-400 mb-1">Stops</label>
-                  <select id="stops-select"
-                          class="rounded-2xl bg-slate-900/80 border border-slate-700 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <option value="any">Any</option>
-                    <option value="nonstop">Non-stop only</option>
-                    <option value="stops">With stops only</option>
+                  <label class="block text-xs text-slate-400 mb-1">Currency</label>
+                  <select id="currencySelect"
+                          class="w-full rounded-xl bg-slate-900/70 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <option value="INR">INR ₹</option>
+                    <option value="USD">USD $</option>
+                    <option value="EUR">EUR €</option>
+                    <option value="GBP">GBP £</option>
                   </select>
                 </div>
               </div>
-              <div class="flex-1 min-w-[120px]">
-                <p class="text-[11px] text-slate-400 mb-1">Filter by airline</p>
-                <div id="airline-chips" class="flex flex-wrap gap-1"></div>
+
+              <!-- Submit -->
+              <div class="flex items-center justify-between gap-3 pt-1">
+                <p id="formError" class="text-xs text-red-300 hidden"></p>
+                <button type="submit"
+                        class="ml-auto inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-md hover:brightness-110">
+                  <span>Search flights</span>
+                  <span>✈️</span>
+                </button>
               </div>
-            </div>
+            </form>
           </div>
 
-          <div class="glass rounded-3xl p-4 sm:p-5 shadow-xl min-h-[120px]">
-            <div id="results-loading" class="flex flex-col items-center justify-center py-10 hidden">
-              <div class="w-10 h-10 border-4 border-slate-700 border-t-sky-400 rounded-full animate-spin mb-3"></div>
-              <p class="text-sm text-slate-300">Fetching live fares… analysing prices &amp; predictions.</p>
-            </div>
+          <!-- Flexible dates strip -->
+          <div id="flexStrip" class="hidden glass rounded-2xl px-3 py-2 text-xs">
+            <p class="text-slate-300 mb-2">Flexible dates: cheapest prices ±3 days</p>
+            <div id="flexStripInner" class="flex flex-wrap gap-2"></div>
+          </div>
 
-            <div id="results-empty" class="py-6 text-center text-sm text-slate-400">
-              Start by searching for flights above. Results will appear here.
-            </div>
+          <!-- Filters -->
+          <div class="glass rounded-2xl p-3 flex flex-wrap gap-3 items-center justify-between">
+            <div class="flex flex-wrap gap-2 items-center text-xs">
+              <label class="text-slate-400">Sort by:</label>
+              <select id="sortSelect"
+                      class="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500">
+                <option value="price">Price (low → high)</option>
+                <option value="depart">Departure time</option>
+                <option value="duration">Duration (shortest)</option>
+              </select>
 
-            <div id="results-error" class="hidden p-3 rounded-2xl bg-rose-500/10 border border-rose-500/40 text-xs text-rose-100">
-              We couldn’t load flights right now. Please try again in a moment.
+              <label class="ml-3 text-slate-400">Stops:</label>
+              <select id="stopsSelect"
+                      class="rounded-lg bg-slate-900/70 border border-slate-700 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500">
+                <option value="any">Any</option>
+                <option value="nonstop">Non-stop only</option>
+                <option value="stops">With stops only</option>
+              </select>
             </div>
+            <div id="airlineFilter" class="flex flex-wrap gap-1 text-[0.65rem]"></div>
+          </div>
 
-            <div id="results-list" class="space-y-3 mt-2 max-h-[420px] overflow-y-auto scroll-y-soft hidden"></div>
+          <!-- Results list -->
+          <div class="glass rounded-2xl p-3 md:p-4 min-h-[160px]">
+            <div id="loadingState" class="hidden flex flex-col items-center justify-center py-8 text-sm text-slate-300">
+              <div class="h-8 w-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin mb-3"></div>
+              <p>Fetching live fares… analysing prices & predictions.</p>
+            </div>
+            <div id="emptyState" class="hidden py-6 text-sm text-slate-400 text-center">
+              Start by searching for a route above.
+            </div>
+            <div id="resultsError" class="hidden mb-3 rounded-xl bg-red-900/40 border border-red-500/60 px-3 py-2 text-xs text-red-100"></div>
+            <div id="flightsContainer" class="space-y-3 max-h-[480px] overflow-auto scrollbar-thin"></div>
           </div>
         </div>
 
-        <div class="space-y-4">
-          <div class="glass rounded-3xl p-4 sm:p-5 shadow-xl h-full">
-            <h2 class="text-lg font-semibold mb-2">AI price advisor</h2>
-            <p class="text-xs text-slate-400 mb-3">
-              We blend heuristics (time &amp; prices) with historical trends to suggest whether to book now or wait.
+        <!-- Right: AI panel -->
+        <aside class="space-y-4">
+          <div class="glass rounded-2xl p-4 shadow-md">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-sm font-semibold text-slate-100">AI Price Advisor</h2>
+              <span id="aiBadge"
+                    class="px-2 py-1 rounded-full text-[0.7rem] bg-slate-800 text-slate-300 border border-slate-600">
+                No signal
+              </span>
+            </div>
+            <p id="aiSummary" class="text-xs text-slate-300 mb-3">
+              Search a route to see whether you should book now or wait.
             </p>
 
-            <div id="ai-empty" class="text-xs text-slate-500">
-              Run a search to see AI guidance for your route and dates.
+            <div class="mb-3">
+              <div class="flex justify-between text-[0.7rem] text-slate-400 mb-1">
+                <span>Confidence</span>
+                <span id="aiConfidenceText">0%</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div id="aiConfidenceBar" class="h-full w-0 bg-sky-400 transition-all duration-300"></div>
+              </div>
             </div>
 
-            <div id="ai-panel" class="hidden space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-xs text-slate-400">Recommendation</p>
-                  <p id="ai-action" class="text-xl font-semibold mt-1">—</p>
-                </div>
-                <span id="ai-badge"
-                      class="px-3 py-1 rounded-full text-xs font-semibold border border-slate-600 bg-slate-900/70">
-                  —
-                </span>
-              </div>
-
+            <div class="space-y-2 text-[0.7rem] text-slate-300">
               <div>
-                <p class="text-xs text-slate-400 mb-1">Confidence</p>
-                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                  <div id="ai-confidence-bar" class="h-full rounded-full bg-sky-400" style="width: 0%"></div>
-                </div>
-                <p id="ai-confidence-text" class="text-[11px] text-slate-400 mt-1"></p>
+                <p class="font-semibold text-slate-200">Heuristic view</p>
+                <p id="aiHeuristic" class="text-slate-400">
+                  –
+                </p>
               </div>
-
-              <div class="text-xs space-y-2">
-                <div>
-                  <p class="text-[11px] text-slate-400 mb-1">Heuristic view</p>
-                  <p id="ai-heuristic" class="text-slate-200 leading-snug">—</p>
-                </div>
-                <div>
-                  <p class="text-[11px] text-slate-400 mb-1">Learning model</p>
-                  <p id="ai-learning" class="text-slate-200 leading-snug">—</p>
-                </div>
-              </div>
-
-              <div class="text-xs border-t border-slate-700 pt-3 mt-2">
-                <p class="text-[11px] text-slate-400 mb-1">Best deal</p>
-                <p id="ai-best-deal" class="text-slate-100 leading-snug">—</p>
+              <div>
+                <p class="font-semibold text-slate-200">Seasonal view</p>
+                <p id="aiLearning" class="text-slate-400">
+                  –
+                </p>
               </div>
             </div>
 
-            
+            <div class="mt-3 text-[0.7rem] text-slate-300 border-t border-slate-700 pt-2">
+              <p id="aiBestDeal" class="text-slate-200">
+                Best deal will appear here after a search.
+              </p>
+            </div>
           </div>
-        </div>
+
+          <div class="glass rounded-2xl p-3 text-[0.7rem] text-slate-300">
+            <p class="font-semibold mb-1">Learning behaviour</p>
+            <p>
+              313flight keeps a rolling memory (~90 days) of recent searches in Neon Postgres and builds a seasonal trend per route and month. It only makes a strong “Book” or “Wait” call when patterns are clear; otherwise it shows “No strong signal”.
+            </p>
+          </div>
+        </aside>
       </section>
 
-      <section id="tab-trends" class="tab-panel hidden">
-        <div class="glass rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
-          <h2 class="text-lg font-semibold">Trends & history</h2>
-          <p class="text-xs text-slate-400">
-            After you run a search, we plot how average prices evolved as departure approaches for your route.
-          </p>
-
-          <div class="border border-slate-800 rounded-3xl p-3 sm:p-4">
-            <canvas id="history-chart" class="w-full h-64"></canvas>
-          </div>
-          <p id="history-commentary" class="text-xs text-slate-300">
-            No historical data yet. As more searches happen, we’ll learn how this route behaves.
-          </p>
+      <!-- Trends & History Panel -->
+      <section id="panel-history" class="hidden mt-4 glass rounded-2xl p-4">
+        <h2 class="text-sm font-semibold mb-2">Trends & History</h2>
+        <p id="historyStatus" class="text-xs text-slate-400 mb-3">
+          Run a search first to load price history for that exact route and date.
+        </p>
+        <div class="w-full max-w-xl">
+          <canvas id="historyChart" height="160"></canvas>
         </div>
+        <p id="historyCommentary" class="mt-3 text-xs text-slate-300"></p>
       </section>
 
-      <section id="tab-about" class="tab-panel hidden">
-        <div class="glass rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
-          <h2 class="text-lg font-semibold">About the AI advisor</h2>
-          <p class="text-sm text-slate-300">
-            313flight blends two layers of intelligence:
-          </p>
-          <ol class="list-decimal list-inside text-sm text-slate-300 space-y-2">
-            <li>
-              <span class="font-medium">Heuristic layer:</span> uses
-              days until departure and the distribution of prices in your current search
-              to guess whether this looks like a good deal.
-            </li>
-            <li>
-              <span class="font-medium">Learning layer:</span> stores anonymized snapshots of past searches in SQLite
-              and fits a simple trend on how prices change as the date approaches.
-            </li>
-          </ol>
-          <p class="text-sm text-slate-300">
-            When both layers agree, confidence increases. When they disagree, we tell you and lower the
-            confidence score.
-          </p>
-          <p class="text-xs text-slate-500">
-            Disclaimer: this is an educational tool. Always double-check prices across multiple sites and
-            book with trusted providers.
-          </p>
-        </div>
+      <!-- About AI Panel -->
+      <section id="panel-about" class="hidden mt-4 glass rounded-2xl p-4 text-sm text-slate-300">
+        <h2 class="text-base font-semibold mb-2">About the AI advisor</h2>
+        <p class="mb-2">
+          The advisor combines <span class="font-semibold">heuristic logic</span> with a lightweight
+          <span class="font-semibold">seasonal model</span>.
+        </p>
+        <ul class="list-disc list-inside space-y-1 text-xs">
+          <li>
+            <span class="font-semibold">Heuristic layer:</span> uses how many days remain until departure
+            and compares current prices (min / average / max) to decide whether fares look cheap or expensive.
+          </li>
+          <li>
+            <span class="font-semibold">Seasonal layer:</span> for each route and month, it tracks how
+            prices have behaved in recent months when people searched far in advance (≥ 30 days) vs very close
+            to departure (≤ 7 days).
+          </li>
+          <li>
+            If both layers agree, you see a strong “Book now” or “Wait” signal with higher confidence. If
+            data is weak or inconsistent, the advisor shows “No strong signal” instead of guessing.
+          </li>
+          <li>
+            Only a lightweight summary is stored in the database, not full user-level history, and raw data
+            older than ~90 days is automatically pruned.
+          </li>
+        </ul>
       </section>
     </main>
   </div>
 
-    <script>
-    const API_BASE = '';
-
-    let currentTripType = 'oneway';
-    let selectedOrigin = null;
-    let selectedDestination = null;
-    let allFlights = [];
-    let airlineFilterActive = new Set();
-    let currentMeta = null;
-    let historyChart = null;
-
-    const originInput = document.getElementById('origin-input');
-    const originSuggestions = document.getElementById('origin-suggestions');
-    const destinationInput = document.getElementById('destination-input');
-    const destinationSuggestions = document.getElementById('destination-suggestions');
-    const originError = document.getElementById('origin-error');
-    const destinationError = document.getElementById('destination-error');
-    const dateError = document.getElementById('date-error');
-
-    const tripOneWayBtn = document.getElementById('trip-oneway');
-    const tripRoundBtn = document.getElementById('trip-round');
-    const returnDateInput = document.getElementById('return-date');
-
-    const searchBtn = document.getElementById('search-btn');
-    const departDateInput = document.getElementById('depart-date');
-    const travelersInput = document.getElementById('travelers');
-    const cabinSelect = document.getElementById('cabin');
-    const currencySelect = document.getElementById('currency');
-    const flexibleDatesCheckbox = document.getElementById('flexible-dates');
-
-    const resultsLoading = document.getElementById('results-loading');
-    const resultsEmpty = document.getElementById('results-empty');
-    const resultsError = document.getElementById('results-error');
-    const resultsList = document.getElementById('results-list');
-
-    const sortSelect = document.getElementById('sort-select');
-    const stopsSelect = document.getElementById('stops-select');
-    const airlineChips = document.getElementById('airline-chips');
-    const filtersContainer = document.getElementById('filters-container');
-
-    const flexStrip = document.getElementById('flex-strip');
-    const flexStripInner = document.getElementById('flex-strip-inner');
-
-    const aiEmpty = document.getElementById('ai-empty');
-    const aiPanel = document.getElementById('ai-panel');
-    const aiAction = document.getElementById('ai-action');
-    const aiBadge = document.getElementById('ai-badge');
-    const aiConfBar = document.getElementById('ai-confidence-bar');
-    const aiConfText = document.getElementById('ai-confidence-text');
-    const aiHeuristic = document.getElementById('ai-heuristic');
-    const aiLearning = document.getElementById('ai-learning');
-    const aiBestDeal = document.getElementById('ai-best-deal');
-
-
-    const historyCommentary = document.getElementById('history-commentary');
-
-    // Init departure date to tomorrow
-    (function initDates() {
-      const now = new Date();
-      now.setDate(now.getDate() + 1);
-      const val = now.toISOString().substring(0, 10);
-      departDateInput.value = val;
-    })();
-
-    // Tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tab = btn.dataset.tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
-        btn.classList.add('tab-active');
-        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-        document.getElementById(`tab-${tab}`).classList.remove('hidden');
-      });
-    });
-
-    // Trip type toggle
-    function updateTripType(type) {
-      currentTripType = type;
-      if (type === 'oneway') {
-        tripOneWayBtn.classList.add('bg-slate-800/70', 'border-slate-700');
-        tripRoundBtn.classList.remove('bg-slate-800/70', 'border-slate-700');
-        returnDateInput.disabled = true;
-        returnDateInput.classList.add('bg-slate-900/40', 'border-slate-800');
-      } else {
-        tripRoundBtn.classList.add('bg-slate-800/70', 'border-slate-700');
-        tripOneWayBtn.classList.remove('bg-slate-800/70', 'border-slate-700');
-        returnDateInput.disabled = false;
-        returnDateInput.classList.remove('bg-slate-900/40', 'border-slate-800');
-        returnDateInput.classList.add('bg-slate-900/70', 'border-slate-700');
-      }
-    }
-
-    tripOneWayBtn.addEventListener('click', () => updateTripType('oneway'));
-    tripRoundBtn.addEventListener('click', () => updateTripType('round'));
-
-    // Debounce helper
-    function debounce(fn, delay = 300) {
-      let t;
-      return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), delay);
-      };
-    }
-
-    // Fetch locations from backend
-    async function fetchLocations(query) {
-      const res = await fetch(`${API_BASE}/api/locations?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Location API error');
-      return res.json();
-    }
-
-    // Render suggestions dropdown
-    function showSuggestions(container, items, onSelect) {
-      container.innerHTML = '';
-      if (!items.length) {
-        container.classList.add('hidden');
-        return;
-      }
-      items.forEach(loc => {
-        const div = document.createElement('button');
-        div.type = 'button';
-        div.className =
-          'w-full text-left px-3 py-2 text-xs hover:bg-slate-800/80 flex flex-col focus:outline-none';
-        div.innerHTML = `
-          <span class="text-slate-100">${loc.label}</span>
-          <span class="text-[11px] text-slate-400">${loc.type === 'CITY' ? 'City' : 'Airport'}</span>
-        `;
-        div.addEventListener('click', () => {
-          onSelect(loc);
-          container.classList.add('hidden');
-        });
-        container.appendChild(div);
-      });
-      container.classList.remove('hidden');
-    }
-
-    // Origin input handler
-    const handleOriginInput = debounce(async () => {
-      const q = originInput.value.trim();
-      selectedOrigin = null;
-      originError.classList.add('hidden');
-      if (!q) {
-        originSuggestions.classList.add('hidden');
-        return;
-      }
-      try {
-        const data = await fetchLocations(q);
-        showSuggestions(originSuggestions, data.locations, (loc) => {
-          originInput.value = loc.label;
-          selectedOrigin = loc;
-        });
-      } catch {
-        originSuggestions.classList.add('hidden');
-      }
-    }, 300);
-
-    // Destination input handler (FIXED HERE)
-    const handleDestinationInput = debounce(async () => {
-      const q = destinationInput.value.trim();  // ✅ correct `const q`
-      selectedDestination = null;
-      destinationError.classList.add('hidden');
-      if (!q) {
-        destinationSuggestions.classList.add('hidden');
-        return;
-      }
-      try {
-        const data = await fetchLocations(q);
-        showSuggestions(destinationSuggestions, data.locations, (loc) => {
-          destinationInput.value = loc.label;
-          selectedDestination = loc;
-        });
-      } catch {
-        destinationSuggestions.classList.add('hidden');
-      }
-    }, 300);
-
-    originInput.addEventListener('input', handleOriginInput);
-    destinationInput.addEventListener('input', handleDestinationInput);
-
-    // Hide suggestion boxes when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!originSuggestions.contains(e.target) && e.target !== originInput) {
-        originSuggestions.classList.add('hidden');
-      }
-      if (!destinationSuggestions.contains(e.target) && e.target !== destinationInput) {
-        destinationSuggestions.classList.add('hidden');
-      }
-    });
-
-    // Currency formatting
-    function formatCurrency(value, currency) {
-      try {
-        return new Intl.NumberFormat(undefined, {
-          style: 'currency',
-          currency,
-          maximumFractionDigits: 0,
-        }).format(value);
-      } catch {
-        return `${value.toFixed(0)} ${currency}`;
-      }
-    }
-
-    // Render flights list
-    function renderFlights() {
-      if (!allFlights.length) {
-        resultsList.classList.add('hidden');
-        resultsEmpty.classList.remove('hidden');
-        filtersContainer.classList.add('hidden');
-        return;
-      }
-
-      let flights = [...allFlights];
-
-      const stopsFilter = stopsSelect.value;
-      if (stopsFilter === 'nonstop') {
-        flights = flights.filter(f => f.nonstop);
-      } else if (stopsFilter === 'stops') {
-        flights = flights.filter(f => !f.nonstop);
-      }
-
-      if (airlineFilterActive.size > 0) {
-        flights = flights.filter(f => airlineFilterActive.has(f.airline));
-      }
-
-      const sortBy = sortSelect.value;
-      if (sortBy === 'price') {
-        flights.sort((a, b) => a.price - b.price);
-      } else if (sortBy === 'depart') {
-        flights.sort((a, b) => new Date(a.departTime) - new Date(b.departTime));
-      } else if (sortBy === 'duration') {
-        const durToMin = (f) => {
-          const match = f.duration.match(/(\d+)h\s*(\d+)?m?/i);
-          if (!match) return Infinity;
-          const h = parseInt(match[1] || '0', 10);
-          const m = parseInt(match[2] || '0', 10);
-          return h * 60 + m;
-        };
-        flights.sort((a, b) => durToMin(a) - durToMin(b));
-      }
-
-      resultsList.innerHTML = '';
-      flights.forEach(f => {
-        const card = document.createElement('div');
-        card.className =
-          'rounded-2xl border border-slate-700/70 bg-slate-900/60 px-3 py-3 sm:px-4 sm:py-3 flex flex-col gap-2';
-
-        const departLocal = new Date(f.departTime);
-        const arriveLocal = new Date(f.arrivalTime);
-        const departStr = departLocal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const arriveStr = arriveLocal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        card.innerHTML = `
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-semibold">
-                  ${f.carrierCode}
-                </div>
-                <div>
-                  <p class="text-sm font-semibold">${f.airline}</p>
-                  <p class="text-[11px] text-slate-400">${f.flightNumber}</p>
-                </div>
-              </div>
-            </div>
-            <div class="text-right">
-              <p class="text-sm font-semibold">${formatCurrency(f.price, f.currency)}</p>
-              <p class="text-[11px] text-slate-400">${f.nonstop ? 'Non-stop' : `${f.stops} stop${f.stops > 1 ? 's' : ''}`}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 mt-1">
-            <div class="flex flex-col">
-              <span class="text-sm font-semibold">${departStr}</span>
-              <span class="text-[11px] text-slate-400">Departure</span>
-            </div>
-            <div class="flex-1 flex items-center gap-2">
-              <div class="h-px flex-1 bg-slate-700"></div>
-              <span class="text-[16px]">✈️</span>
-              <div class="h-px flex-1 bg-slate-700"></div>
-            </div>
-            <div class="flex flex-col text-right">
-              <span class="text-sm font-semibold">${arriveStr}</span>
-              <span class="text-[11px] text-slate-400">Arrival</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between mt-1">
-            <div class="flex items-center gap-2 text-[11px] text-slate-400">
-              <span class="inline-flex items-center px-2 py-1 rounded-full border border-slate-700/80">
-                ${f.nonstop ? 'Non-stop' : `${f.stops} stop${f.stops > 1 ? 's' : ''}`}
-              </span>
-              <span>${f.duration}</span>
-            </div>
-            <a href="${f.bookingUrl}" target="_blank"
-               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-sky-500 text-slate-900 hover:bg-sky-400">
-              Book <span>↗</span>
-            </a>
-          </div>
-        `;
-        resultsList.appendChild(card);
-      });
-
-      resultsEmpty.classList.add('hidden');
-      resultsList.classList.remove('hidden');
-      filtersContainer.classList.remove('hidden');
-    }
-
-    // Airline filter chips
-    function buildAirlineChips() {
-      airlineChips.innerHTML = '';
-      const uniqueAirlines = [...new Set(allFlights.map(f => f.airline))];
-      uniqueAirlines.forEach(name => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className =
-          'px-2.5 py-1 rounded-full border border-slate-700 text-[11px] text-slate-300 bg-slate-900/60';
-        btn.textContent = name;
-        btn.addEventListener('click', () => {
-          if (airlineFilterActive.has(name)) {
-            airlineFilterActive.delete(name);
-            btn.classList.remove('bg-sky-500/20', 'border-sky-400', 'text-sky-100');
-          } else {
-            airlineFilterActive.add(name);
-            btn.classList.add('bg-sky-500/20', 'border-sky-400', 'text-sky-100');
-          }
-          renderFlights();
-        });
-        airlineChips.appendChild(btn);
-      });
-    }
-
-    // Flexible dates strip
-    function renderFlexStrip(items, baseDate) {
-      if (!items || !items.length) {
-        flexStrip.classList.add('hidden');
-        return;
-      }
-      flexStripInner.innerHTML = '';
-      items.forEach(d => {
-        const chip = document.createElement('div');
-        const dateObj = new Date(d.date);
-        const dayName = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
-        const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-
-        chip.className =
-          'min-w-[120px] px-3 py-2 rounded-2xl border text-xs flex flex-col justify-between ' +
-          (d.cheaperThanBase ? 'border-emerald-400/60 bg-emerald-500/10' : 'border-slate-700 bg-slate-900/60');
-
-        chip.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span>${dayName}</span>
-            <span class="text-[10px] text-slate-400">${d.offset > 0 ? '+' + d.offset : d.offset} days</span>
-          </div>
-          <div class="mt-1 font-semibold">${formatCurrency(d.minPrice, d.currency)}</div>
-          <div class="text-[10px] text-slate-400 mt-0.5">${dateStr}</div>
-        `;
-
-        flexStripInner.appendChild(chip);
-      });
-
-      flexStrip.classList.remove('hidden');
-    }
-
-    // AI panel render
-    function renderAI(model) {
-      if (!model) {
-        aiPanel.classList.add('hidden');
-        aiEmpty.classList.remove('hidden');
-        return;
-      }
-      aiEmpty.classList.add('hidden');
-      aiPanel.classList.remove('hidden');
-
-      aiAction.textContent = model.action || 'No strong signal';
-      aiConfBar.style.width = `${model.confidence || 0}%`;
-      aiConfText.textContent = `Confidence: ${model.confidence || 0}%`;
-      aiHeuristic.textContent = model.heuristic?.reason || '—';
-      aiLearning.textContent = `${model.learning?.reason || '—'} (data points: ${model.learning?.pointsUsed || 0})`;
-      aiBestDeal.textContent = model.bestDealSummary || '—';
-
-      let colorClass = 'border-slate-600 bg-slate-900/70 text-slate-200';
-      if (model.action.toLowerCase().includes('book')) {
-        colorClass = 'border-emerald-400 bg-emerald-500/10 text-emerald-100';
-      } else if (model.action.toLowerCase().includes('wait')) {
-        colorClass = 'border-amber-400 bg-amber-500/10 text-amber-100';
-      }
-      aiBadge.className =
-        'px-3 py-1 rounded-full text-xs font-semibold border ' + colorClass;
-      aiBadge.textContent = model.action;
-    }
-
-    // History chart
-    function renderHistoryChart(origin, destination, departDate) {
-      if (!origin || !destination || !departDate) {
-        historyCommentary.textContent =
-          'No historical data yet. As more searches happen, we’ll learn how this route behaves.';
-        if (historyChart) historyChart.destroy();
-        return;
-      }
-      fetch(
-        `${API_BASE}/api/history?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(
-          destination
-        )}&departDate=${encodeURIComponent(departDate)}`
-      )
-        .then(res => res.json())
-        .then(data => {
-          const history = data.history || [];
-          const ctx = document.getElementById('history-chart').getContext('2d');
-          if (historyChart) {
-            historyChart.destroy();
-          }
-
-          if (!history.length) {
-            historyCommentary.textContent =
-              'No historical data yet. As more searches happen, we’ll learn how this route behaves.';
-            historyChart = new Chart(ctx, {
-              type: 'line',
-              data: { labels: [], datasets: [] },
-            });
-            return;
-          }
-
-          const labels = history.map(h => h.days_until_departure);
-          const prices = history.map(h => h.avg_price);
-
-          historyChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{ label: 'Average price', data: prices, tension: 0.3 }],
-            },
-            options: {
-              plugins: {
-                legend: { labels: { color: '#cbd5f5', font: { size: 11 } } },
-              },
-              scales: {
-                x: {
-                  title: { display: true, text: 'Days until departure', color: '#94a3b8' },
-                  ticks: { color: '#cbd5f5', font: { size: 10 } },
-                  grid: { display: false },
-                },
-                y: {
-                  title: { display: true, text: 'Average price', color: '#94a3b8' },
-                  ticks: { color: '#cbd5f5', font: { size: 10 } },
-                  grid: { color: '#1e293b' },
-                },
-              },
-            },
-          });
-
-          if (prices.length >= 2) {
-            const first = prices[0];
-            const last = prices[prices.length - 1];
-            if (last > first * 1.05) {
-              historyCommentary.textContent =
-                'Prices have generally increased as departure approaches, supporting a “Book now” bias.';
-            } else if (last < first * 0.95) {
-              historyCommentary.textContent =
-                'Prices have generally decreased as departure approaches, supporting a “Wait” bias.';
-            } else {
-              historyCommentary.textContent =
-                'Data is mixed; no strong trend detected yet.';
-            }
-          } else {
-            historyCommentary.textContent =
-              'Data is sparse; no strong trend detected yet.';
-          }
-        })
-        .catch(() => {
-          historyCommentary.textContent =
-            'Failed to load historical data for this route.';
-        });
-    }
-
-    
-
-    sortSelect.addEventListener('change', renderFlights);
-    stopsSelect.addEventListener('change', renderFlights);
-
-    // Search button click
-    searchBtn.addEventListener('click', async () => {
-      originError.classList.add('hidden');
-      destinationError.classList.add('hidden');
-      dateError.classList.add('hidden');
-      resultsError.classList.add('hidden');
-
-      if (!selectedOrigin) {
-        originError.textContent = 'Please select an origin from suggestions.';
-        originError.classList.remove('hidden');
-      }
-      if (!selectedDestination) {
-        destinationError.textContent = 'Please select a destination from suggestions.';
-        destinationError.classList.remove('hidden');
-      }
-      if (!selectedOrigin || !selectedDestination) return;
-
-      if (selectedOrigin.iataCode === selectedDestination.iataCode) {
-        destinationError.textContent = 'Origin and destination must be different.';
-        destinationError.classList.remove('hidden');
-        return;
-      }
-
-      const depart = departDateInput.value;
-      if (!depart) {
-        dateError.textContent = 'Please choose a departure date.';
-        dateError.classList.remove('hidden');
-        return;
-      }
-      if (currentTripType === 'round' && !returnDateInput.value) {
-        dateError.textContent = 'Please choose a return date.';
-        dateError.classList.remove('hidden');
-        return;
-      }
-
-      const today = new Date();
-      const depDate = new Date(depart);
-      if (depDate < new Date(today.toISOString().substring(0, 10))) {
-        dateError.textContent = 'Departure date cannot be in the past.';
-        dateError.classList.remove('hidden');
-        return;
-      }
-      if (currentTripType === 'round') {
-        const retDate = new Date(returnDateInput.value);
-        if (retDate <= depDate) {
-          dateError.textContent = 'Return date must be after departure date.';
-          dateError.classList.remove('hidden');
-          return;
-        }
-      }
-
-      // Loading state
-      resultsLoading.classList.remove('hidden');
-      resultsEmpty.classList.add('hidden');
-      resultsList.classList.add('hidden');
-      flexStrip.classList.add('hidden');
-      filtersContainer.classList.add('hidden');
-      airlineFilterActive.clear();
-      allFlights = [];
-      renderFlights();
-      aiPanel.classList.add('hidden');
-      aiEmpty.classList.remove('hidden');
-
-      const body = {
-        originCode: selectedOrigin.iataCode,
-        destinationCode: selectedDestination.iataCode,
-        originLabel: selectedOrigin.label,
-        destinationLabel: selectedDestination.label,
-        departureDate: depart,
-        returnDate: currentTripType === 'round' ? returnDateInput.value : null,
-        tripType: currentTripType === 'round' ? 'round' : 'oneway',
-        travelers: travelersInput.value || 1,
-        cabin: cabinSelect.value,
-        currency: currencySelect.value,
-        flexibleDates: flexibleDatesCheckbox.checked,
-      };
-
-      try {
-        const res = await fetch(`${API_BASE}/api/flights`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Search failed');
-        }
-
-        allFlights = data.flights || [];
-        currentMeta = data.meta || null;
-
-        if (!allFlights.length) {
-          resultsEmpty.textContent = 'No flights found for your search.';
-          resultsEmpty.classList.remove('hidden');
-          resultsList.classList.add('hidden');
-          flexStrip.classList.add('hidden');
-          filtersContainer.classList.add('hidden');
-        } else {
-          buildAirlineChips();
-          renderFlights();
-        }
-
-        renderAI(data.model);
-        renderFlexStrip(data.flexibleDates || [], body.departureDate);
-
-        if (currentMeta) {
-          renderHistoryChart(currentMeta.originCode, currentMeta.destinationCode, currentMeta.departureDate);
-        }
-      } catch (err) {
-        console.error(err);
-        resultsError.classList.remove('hidden');
-        resultsEmpty.classList.add('hidden');
-      } finally {
-  resultsLoading.classList.add('hidden');
-}
-    });
-  </script>
-
+  <script src="app.js"></script>
 </body>
 </html>
