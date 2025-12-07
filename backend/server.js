@@ -225,26 +225,30 @@ async function getFlexibleDateSuggestions({
       d.setDate(d.getDate() + offset);
       const dateStr = d.toISOString().slice(0, 10);
 
+      // ✅ Only use rows that match the current currency
       const rows = await all(
         `
-        SELECT MIN(min_price) AS min_price, MAX(currency) AS currency
+        SELECT MIN(min_price) AS min_price
         FROM price_history
         WHERE origin = $1
           AND destination = $2
           AND departure_date = $3
+          AND currency = $4
       `,
-        [origin, destination, dateStr]
+        [origin, destination, dateStr, currency]
       );
 
       const row = rows[0];
       if (!row || row.min_price === null) continue;
 
       const minPrice = Number(row.min_price);
+
       suggestions.push({
         date: dateStr,
         offset,
         minPrice,
-        currency: row.currency || currency,
+        // ✅ Always report in the current search currency
+        currency,
         cheaperThanBase:
           typeof baseMinPrice === "number" && baseMinPrice > 0
             ? minPrice < baseMinPrice
@@ -260,6 +264,7 @@ async function getFlexibleDateSuggestions({
     return [];
   }
 }
+
 
 /* ----------------------------------------------------------
    HISTORY ENDPOINT for Trends & History tab
