@@ -113,76 +113,118 @@ function heuristicAdvice({ daysUntilDeparture, minPrice, avgPrice, maxPrice }) {
 }
 
 /**
- * Learning-based advice using historical price data from Postgres.
- * Looks at price trend as departure approaches.
+ * Learning-based advice using lightweight seasonal_stats table.
+ *
+ * For each (origin, destination, month), we only store:
+ *  - far_sum / far_count: prices when far from departure (>= 30 days)
+ *  - near_sum / near_count: prices when close to departure (<= 7 days)
+ *
+ * We compare average near vs far to see if prices usually go up or down
+ * as departure gets closer *in this season*.
  */
 async function learningAdvice({ origin, destination, departureDate }) {
   try {
-    // Use month of departure for a "seasonal" view
-    // and only consider searches from the last 90 days (recent market regime)
+    const month = new Date(departureDate).getMonth() + 1; // 1–12
+
     const rows = await all(
       `
-        SELECT days_until_departure, avg_price
-        FROM price_history
-        WHERE origin = $1
-          AND destination = $2
-          AND EXTRACT(MONTH FROM departure_date) = EXTRACT(MONTH FROM $3::date)
-          AND search_date >= CURRENT_DATE - INTERVAL '90 days'
-        ORDER BY days_until_departure DESC
+        SELECT total_points, far_sum, far_count, near_sum, near_count
+        FROM seasonal_stats
+        WHERE origin = $1 AND destination = $2 AND month = $3
       `,
-      [origin, destination, departureDate]
+      [origin, destination, month]
     );
-    
-    // ... rest of learningAdvice stays the same ...
 
-
-    if (!rows || rows.length < 3) {
+    if (!rows || rows.length === 0) {
       return {
         hasHistory: false,
-        points: rows ? rows.length : 0,
+        points: 0,
         action: 'NO_SIGNAL',
         confidence: 40,
         trend: 'FLAT',
         reason:
-          'Not enough historical data yet for this route and date. As more searches occur, the model will learn.',
+          'No seasonal data yet for this route and month. As more recent searches occur, the model will learn.',
       };
     }
 
-    const points = rows.length;
-    const first = rows[0]; // furthest from departure (largest days_until_departure)
-    const last = rows[rows.length - 1]; // closest to departure (smallest days_until_departure)
+    const stat = rows[0];
+    const { total_points, far_sum, far_count, near_sum, near_count } = stat;
 
-    const delta = last.avg_price - first.avg_price;
+    // Need at least a few observations in both far and near windows
+    if (total_points < 6 || far_count < 2 || near_count < 2) {
+      return {
+        hasHistory: true,
+        points: total_points,
+        action: 'NO_SIGNAL',
+        confidence: 45,
+        trend: 'FLAT',
+        reason:
+          'Some seasonal data exists, but not enough far vs near observations to detect a robust trend.',
+      };
+    }
+
+    const farAvg = far_sum / far_count;
+    const nearAvg = near_sum / near_count;
+
+    if (!Number.isFinite(farAvg) || !Number.isFinite(nearAvg) || farAvg <= 0) {
+      return {
+        hasHistory: true,
+        points: total_points,
+        action: 'NO_SIGNAL',
+        confidence: 45,
+        trend: 'FLAT',
+        reason:
+          'Seasonal data is not stable enough to estimate a clear price trend.',
+      };
+    }
+
+    const delta = nearAvg - farAvg;
+    const relChange = delta / farAvg; // positive = prices go up near departure
+
     let action = 'NO_SIGNAL';
     let confidence = 55;
     let trend = 'FLAT';
-    let reason = 'Historical prices do not show a strong directional trend yet.';
+    let reason =
+      'Seasonal data for this route and month does not show a strong directional trend yet.';
 
-    if (Math.abs(delta) < first.avg_price * 0.05) {
-      // <5% change = flat
+    const STRONG_THRESHOLD = 0.10; // 10%
+    const WEAK_THRESHOLD = 0.05;   // 5%
+
+    if (Math.abs(relChange) < WEAK_THRESHOLD) {
       trend = 'FLAT';
       action = 'NO_SIGNAL';
-      confidence = 55;
-      reason = 'Historical prices are fairly flat as departure approaches.';
-    } else if (delta > 0) {
-      // prices increased as departure approached
+      confidence = 50;
+      reason =
+        'Seasonal near vs far prices differ by less than ~5%, so the pattern is effectively flat.';
+    } else if (relChange > STRONG_THRESHOLD) {
       trend = 'UP';
       action = 'BOOK';
-      confidence = 70;
+      confidence = 75;
       reason =
-        'Historically, prices have increased as departure gets closer, which supports booking sooner rather than later.';
-    } else {
-      // delta < 0 → prices dropped as departure approached
+        'In this season, prices for this route are usually higher close to departure than far in advance, suggesting a “Book now” bias.';
+    } else if (relChange < -STRONG_THRESHOLD) {
       trend = 'DOWN';
       action = 'WAIT';
-      confidence = 70;
+      confidence = 75;
       reason =
-        'Historically, prices have decreased as departure gets closer, which supports waiting if your dates are flexible.';
+        'In this season, prices for this route are usually lower close to departure than far in advance, suggesting a “Wait” bias if you can be flexible.';
+    } else if (relChange > 0) {
+      trend = 'UP';
+      action = 'BOOK';
+      confidence = 65;
+      reason =
+        'Seasonal data shows a modest upward drift in prices as departure approaches.';
+    } else {
+      trend = 'DOWN';
+      action = 'WAIT';
+      confidence = 65;
+      reason =
+        'Seasonal data shows a modest downward drift in prices as departure approaches.';
     }
 
     return {
       hasHistory: true,
-      points,
+      points: total_points,
       action,
       confidence,
       trend,
@@ -196,7 +238,7 @@ async function learningAdvice({ origin, destination, departureDate }) {
       action: 'NO_SIGNAL',
       confidence: 40,
       trend: 'FLAT',
-      reason: 'Could not load historical data due to a database error.',
+      reason: 'Could not load seasonal data due to a database error.',
     };
   }
 }
