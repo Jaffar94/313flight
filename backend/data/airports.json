@@ -1,0 +1,20 @@
+[
+  {
+    "iataCode": "DXB",
+    "name": "Dubai International Airport",
+    "cityName": "Dubai",
+    "countryName": "United Arab Emirates"
+  },
+  {
+    "iataCode": "AUH",
+    "name": "Abu Dhabi International Airport",
+    "cityName": "Abu Dhabi",
+    "countryName": "United Arab Emirates"
+  },
+  {
+    "iataCode": "DOH",
+    "name": "Hamad International Airport",
+    "cityName": "Doha",
+    "countryName": "Qatar"
+  }
+]
