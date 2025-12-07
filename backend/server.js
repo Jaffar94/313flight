@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: '313flight', db: 'SQLite' });
+  res.json({ status: 'ok', service: '313flight', db: 'Postgres (Neon)' });
 });
 
 // Locations (autocomplete)
@@ -45,20 +45,18 @@ app.get('/api/locations', async (req, res) => {
 });
 
 /**
- * Build a Google Flights URL that pre-fills:
- *  - origin airport (f=)
- *  - destination airport (t=)
- *  - departure date (d=YYYY-MM-DD)
+ * Build a Google Flights URL using a search query:
+ *  - origin airport
+ *  - destination airport
+ *  - departure date (YYYY-MM-DD)
  *
- * Uses the classic flights URL:
- *   https://www.google.com/flights/#search;f=DEL;t=DXB;d=2025-12-01;
+ * Uses a Google search query so Flights usually opens with correct route + date.
  */
 function buildGoogleFlightsUrl(originCode, destinationCode, departTimeIso) {
   const departDate = (departTimeIso || '').substring(0, 10); // YYYY-MM-DD
   const query = `Flights from ${originCode} to ${destinationCode} on ${departDate}`;
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
-
 
 // Normalize Amadeus flight offer into frontend shape
 function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
@@ -79,7 +77,7 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
     const duration = formatDuration(itinerary.duration);
     const price = parseFloat(offer.price.grandTotal || offer.price.total || 0);
 
-    // Google Flights deep link with same route + date as the selected flight
+    // Fallback Google search link with route + date encoded
     const bookingUrl = buildGoogleFlightsUrl(originCode, destinationCode, departTime);
 
     return {
@@ -117,7 +115,7 @@ function dedupeFlights(flights) {
   return Array.from(map.values());
 }
 
-// Record price history snapshot in SQLite
+// Record price history snapshot in Postgres (Neon)
 async function recordPriceHistory({
   origin,
   destination,
@@ -145,7 +143,7 @@ async function recordPriceHistory({
       INSERT INTO price_history
       (origin, destination, departure_date, search_date, days_until_departure,
        min_price, avg_price, max_price, currency, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `,
     [
       origin,
@@ -321,15 +319,14 @@ app.post('/api/flights', async (req, res) => {
     }
 
     // If SerpApi provided a specific Google Flights search URL, reuse it for all flights
-const serpSearchUrl =
-  flightsSerp.find(f => f.bookingUrl && f.bookingUrl.includes('google.com'))?.bookingUrl;
+    const serpSearchUrl =
+      flightsSerp.find((f) => f.bookingUrl && f.bookingUrl.includes('google.com'))?.bookingUrl;
 
-if (serpSearchUrl) {
-  flights.forEach(f => {
-    f.bookingUrl = serpSearchUrl;
-  });
-}
-
+    if (serpSearchUrl) {
+      flights.forEach((f) => {
+        f.bookingUrl = serpSearchUrl;
+      });
+    }
 
     // Stats for AI
     const prices = flights.map((f) => f.price);
@@ -341,7 +338,7 @@ if (serpSearchUrl) {
       flights[0]
     );
 
-    // Record history snapshot (combined data)
+    // Record history snapshot (combined data) in Postgres
     await recordPriceHistory({
       origin: originCode,
       destination: destinationCode,
@@ -416,7 +413,7 @@ app.get('/api/history', async (req, res) => {
       `
         SELECT days_until_departure, avg_price, min_price, max_price, search_date
         FROM price_history
-        WHERE origin = ? AND destination = ? AND departure_date = ?
+        WHERE origin = $1 AND destination = $2 AND departure_date = $3
         ORDER BY days_until_departure ASC
       `,
       [origin, destination, departDate]
@@ -434,10 +431,10 @@ app.get('/api/history', async (req, res) => {
 // /api/stats – basic learning stats
 app.get('/api/stats', async (req, res) => {
   try {
-    const totalRow = await get('SELECT COUNT(*) as count FROM price_history', []);
+    const totalRow = await get('SELECT COUNT(*)::int as count FROM price_history', []);
     const topRoutes = await all(
       `
-        SELECT origin, destination, COUNT(*) as count
+        SELECT origin, destination, COUNT(*)::int as count
         FROM price_history
         GROUP BY origin, destination
         ORDER BY count DESC
@@ -446,7 +443,7 @@ app.get('/api/stats', async (req, res) => {
     );
 
     res.json({
-      dbEngine: 'SQLite',
+      dbEngine: 'Postgres (Neon)',
       totalHistoryPoints: totalRow?.count || 0,
       topRoutes,
     });
@@ -457,6 +454,7 @@ app.get('/api/stats', async (req, res) => {
     });
   }
 });
+
 // DEBUG: directly test SerpApi from the backend
 app.get('/api/debug-serp', async (req, res) => {
   try {
