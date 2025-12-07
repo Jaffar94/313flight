@@ -1,59 +1,58 @@
 // backend/db.js
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+// Postgres (Neon) DB helper using 'pg'
 
-// Use env DB_PATH if provided (for Render/Railway disks), otherwise local file
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '313flight.db');
-const db = new sqlite3.Database(DB_PATH);
+const { Pool } = require('pg');
 
-// Initialize tables
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS price_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      origin TEXT NOT NULL,
-      destination TEXT NOT NULL,
-      departure_date TEXT NOT NULL,
-      search_date TEXT NOT NULL,
-      days_until_departure INTEGER NOT NULL,
-      min_price REAL NOT NULL,
-      avg_price REAL NOT NULL,
-      max_price REAL NOT NULL,
-      currency TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    )
-  `);
+if (!process.env.DATABASE_URL) {
+  console.warn('DATABASE_URL is not set. Postgres connection will fail.');
+}
+
+// Create a connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // Neon requires SSL
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-function run(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(query, params, function (err) {
-      if (err) return reject(err);
-      resolve(this);
-    });
-  });
+/**
+ * run(sql, params)
+ * Use for INSERT/UPDATE/DELETE or DDL statements where you don't need rows back.
+ */
+async function run(sql, params = []) {
+  const client = await pool.connect();
+  try {
+    await client.query(sql, params);
+  } finally {
+    client.release();
+  }
 }
 
-function all(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows);
-    });
-  });
+/**
+ * all(sql, params)
+ * Returns all rows as an array.
+ */
+async function all(sql, params = []) {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(sql, params);
+    return res.rows;
+  } finally {
+    client.release();
+  }
 }
 
-function get(query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(query, params, (err, row) => {
-      if (err) return reject(err);
-      resolve(row);
-    });
-  });
+/**
+ * get(sql, params)
+ * Returns the first row (or null if none).
+ */
+async function get(sql, params = []) {
+  const rows = await all(sql, params);
+  return rows[0] || null;
 }
 
 module.exports = {
-  db,
   run,
   all,
   get,
