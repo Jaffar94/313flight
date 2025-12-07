@@ -140,7 +140,8 @@ function renderSuggestions(container, list, onSelect) {
     btn.type = 'button';
     btn.className =
       'w-full text-left px-3 py-2 hover:bg-slate-800/70 border-b border-slate-800 last:border-0';
-    btn.textContent = loc.label || `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`;
+    btn.textContent =
+      loc.label || `${loc.cityName}, ${loc.countryName} (${loc.iataCode})`;
     btn.addEventListener('click', () => {
       onSelect(loc);
       container.classList.add('hidden');
@@ -281,7 +282,8 @@ function formatPrice(amount, currency) {
 
 function durationToMinutes(d) {
   if (!d) return Infinity;
-  let h = 0, m = 0;
+  let h = 0,
+    m = 0;
   const matchH = d.match(/(\d+)h/);
   const matchM = d.match(/(\d+)m/);
   if (matchH) h = parseInt(matchH[1], 10);
@@ -311,14 +313,9 @@ function renderFlights(list) {
       'h-8 w-8 rounded-full bg-sky-500/90 flex items-center justify-center text-[0.7rem] font-semibold text-slate-900';
 
     const carrier = f.carrierCode;
-    const airlineName =
-      f.airline ||
-      carrier ||
-      "Unknown airline";
+    const airlineName = f.airline || carrier || 'Unknown airline';
 
-    badge.textContent = (carrier || airlineName || "??")
-      .slice(0, 3)
-      .toUpperCase();
+    badge.textContent = (carrier || airlineName || '??').slice(0, 3).toUpperCase();
 
     const main = document.createElement('div');
     main.className = 'space-y-1';
@@ -331,7 +328,8 @@ function renderFlights(list) {
     airline.textContent = airlineName;
 
     const fn = document.createElement('span');
-    fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
+    fn.className =
+      'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
     fn.textContent = f.flightNumber || '';
 
     titleRow.appendChild(airline);
@@ -345,8 +343,7 @@ function renderFlights(list) {
     line.className = 'flex-1 h-px bg-slate-600 relative';
     const plane = document.createElement('span');
     plane.textContent = '✈️';
-    plane.className =
-      'absolute -top-3 left-1/2 -translate-x-1/2 text-base';
+    plane.className = 'absolute -top-3 left-1/2 -translate-x-1/2 text-base';
     line.appendChild(plane);
     const arr = document.createElement('span');
     arr.textContent = f.arrivalTime ? f.arrivalTime.slice(11, 16) : '–';
@@ -356,13 +353,24 @@ function renderFlights(list) {
     timeline.appendChild(arr);
 
     const metaRow = document.createElement('div');
-    metaRow.className = 'flex flex-wrap items-center gap-2 text-[0.7rem] text-slate-400';
+    metaRow.className =
+      'flex flex-wrap items-center gap-2 text-[0.7rem] text-slate-400';
+
     const dur = document.createElement('span');
     dur.textContent = f.duration || '';
+
     const stops = document.createElement('span');
     stops.className =
       'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem]';
-    stops.textContent = f.nonstop ? 'Non-stop' : `${f.stops} stop${f.stops === 1 ? '' : 's'}`;
+
+    // normalise stop count
+    const stopCount =
+      typeof f.stops === 'number' ? f.stops : (f.nonstop ? 0 : 0);
+
+    stops.textContent =
+      stopCount === 0
+        ? 'Non-stop'
+        : `${stopCount} stop${stopCount === 1 ? '' : 's'}`;
 
     metaRow.appendChild(dur);
     metaRow.appendChild(stops);
@@ -425,8 +433,9 @@ function buildAirlineChips() {
 }
 
 function getActiveAirlines() {
-  return Array.from(document.querySelectorAll('.airline-chip.bg-sky-500\\/80'))
-    .map((el) => el.dataset.airline);
+  return Array.from(document.querySelectorAll('.airline-chip.bg-sky-500\\/80')).map(
+    (el) => el.dataset.airline
+  );
 }
 
 function applyFiltersAndRender() {
@@ -434,15 +443,18 @@ function applyFiltersAndRender() {
 
   let list = [...state.flightsRaw];
 
-  // stops
-  const stops = stopsSelect.value;
-  if (stops === 'nonstop') {
-    list = list.filter((f) => f.nonstop);
-  } else if (stops === 'stops') {
-    list = list.filter((f) => !f.nonstop);
-  }
+  // stops filter
+  const stopsFilter = stopsSelect.value;
+  list = list.filter((f) => {
+    const stopCount =
+      typeof f.stops === 'number' ? f.stops : (f.nonstop ? 0 : 0);
 
-  // airline
+    if (stopsFilter === 'nonstop') return stopCount === 0;
+    if (stopsFilter === 'stops') return stopCount > 0;
+    return true;
+  });
+
+  // airline filter
   const activeAirlines = getActiveAirlines();
   if (activeAirlines.length) {
     list = list.filter((f) => activeAirlines.includes(f.airline));
@@ -455,10 +467,13 @@ function applyFiltersAndRender() {
   } else if (sortKey === 'depart') {
     list.sort(
       (a, b) =>
-        new Date(a.departTime || 0).getTime() - new Date(b.departTime || 0).getTime()
+        new Date(a.departTime || 0).getTime() -
+        new Date(b.departTime || 0).getTime()
     );
   } else if (sortKey === 'duration') {
-    list.sort((a, b) => durationToMinutes(a.duration) - durationToMinutes(b.duration));
+    list.sort(
+      (a, b) => durationToMinutes(a.duration) - durationToMinutes(b.duration)
+    );
   }
 
   renderFlights(list);
@@ -469,16 +484,19 @@ stopsSelect.addEventListener('change', applyFiltersAndRender);
 
 // AI PANEL
 function setBadge(action) {
-  const baseClasses =
-    'px-2 py-1 rounded-full text-[0.7rem] border';
+  const baseClasses = 'px-2 py-1 rounded-full text-[0.7rem] border';
   if (action === 'BOOK') {
-    aiBadge.className = `${baseClasses} bg-emerald-500/20 border-emerald-400 text-emerald-200`;
+    aiBadge.className =
+      baseClasses +
+      ' bg-emerald-500/20 border-emerald-400 text-emerald-200';
     aiBadge.textContent = 'Book now';
   } else if (action === 'WAIT') {
-    aiBadge.className = `${baseClasses} bg-amber-500/20 border-amber-400 text-amber-200`;
+    aiBadge.className =
+      baseClasses + ' bg-amber-500/20 border-amber-400 text-amber-200';
     aiBadge.textContent = 'Wait';
   } else {
-    aiBadge.className = `${baseClasses} bg-slate-800 border-slate-600 text-slate-300`;
+    aiBadge.className =
+      baseClasses + ' bg-slate-800 border-slate-600 text-slate-300';
     aiBadge.textContent = 'No strong signal';
   }
 }
@@ -491,26 +509,35 @@ function updateAI(model) {
     aiConfidenceBar.style.width = '0%';
     aiHeuristic.textContent = '–';
     aiLearning.textContent = '–';
-    aiBestDeal.textContent = 'Best deal will appear here after a search.';
+    aiBestDeal.textContent =
+      'Best deal will appear here after a search.';
     return;
   }
 
   setBadge(model.action);
   aiSummary.textContent = model.explanation || '';
   aiConfidenceText.textContent = `${model.confidence || 0}%`;
-  aiConfidenceBar.style.width = `${Math.min(model.confidence || 0, 100)}%`;
+  aiConfidenceBar.style.width = `${Math.min(
+    model.confidence || 0,
+    100
+  )}%`;
 
   aiHeuristic.textContent = model.heuristic?.reason || '–';
   aiLearning.textContent = model.learning?.reason || '–';
 
   if (model.bestDeal) {
     const bd = model.bestDeal;
-    aiBestDeal.textContent = `Best found: ${bd.airline || ''} ${bd.flightNumber || ''} at ${formatPrice(
+    aiBestDeal.textContent = `Best found: ${
+      bd.airline || ''
+    } ${bd.flightNumber || ''} at ${formatPrice(
       bd.price,
       bd.currency
-    )} (${bd.nonstop ? 'non-stop' : `${bd.stops} stop${bd.stops === 1 ? '' : 's'}`} ).`;
+    )} (${bd.nonstop ? 'non-stop' : `${bd.stops} stop${
+      bd.stops === 1 ? '' : 's'
+    }`} ).`;
   } else {
-    aiBestDeal.textContent = 'Best deal will appear here after a search.';
+    aiBestDeal.textContent =
+      'Best deal will appear here after a search.';
   }
 }
 
@@ -529,7 +556,10 @@ function renderFlexibleDates(flexData, baseCurrency) {
     const dateLabel = item.date;
     const offsetStr =
       item.offset > 0 ? `+${item.offset} days` : `${item.offset} days`;
-    const priceStr = formatPrice(item.minPrice, item.currency || baseCurrency);
+    const priceStr = formatPrice(
+      item.minPrice,
+      item.currency || baseCurrency
+    );
 
     chip.textContent = `${dateLabel} (${offsetStr}) · ${priceStr}${
       item.cheaperThanBase ? ' 💰' : ''
@@ -576,10 +606,13 @@ async function loadHistory() {
       return;
     }
 
-    // sort by days_until_departure ascending
-    history.sort((a, b) => a.days_until_departure - b.days_until_departure);
+    history.sort(
+      (a, b) => a.days_until_departure - b.days_until_departure
+    );
     const labels = history.map((h) => h.days_until_departure);
-    const prices = history.map((h) => Number(h.avg_price || h.avgPrice));
+    const prices = history.map((h) =>
+      Number(h.avg_price || h.avgPrice)
+    );
 
     const ctx = $('historyChart').getContext('2d');
     state.historyChart = new Chart(ctx, {
@@ -615,7 +648,6 @@ async function loadHistory() {
 
     historyStatus.textContent = `History for ${meta.originCode} → ${meta.destinationCode} on ${meta.departureDate}`;
 
-    // Simple commentary: compare first vs last
     const first = prices[0];
     const last = prices[prices.length - 1];
     const change = (last - first) / first;
