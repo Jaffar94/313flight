@@ -116,6 +116,7 @@ function dedupeFlights(flights) {
 }
 
 // Record price history snapshot in Postgres (Neon)
+// Record price history snapshot in Postgres (Neon) – fail-safe
 async function recordPriceHistory({
   origin,
   destination,
@@ -123,43 +124,55 @@ async function recordPriceHistory({
   currency,
   flights,
 }) {
-  if (!flights || !flights.length) return;
+  try {
+    // If DB is not configured, skip logging
+    if (!process.env.DATABASE_URL) {
+      console.warn('No DATABASE_URL set; skipping price history logging.');
+      return;
+    }
 
-  const prices = flights.map((f) => f.price).filter((p) => Number.isFinite(p));
-  if (!prices.length) return;
+    if (!flights || !flights.length) return;
 
-  const min_price = Math.min(...prices);
-  const max_price = Math.max(...prices);
-  const avg_price = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const prices = flights.map((f) => f.price).filter((p) => Number.isFinite(p));
+    if (!prices.length) return;
 
-  const today = new Date();
-  const search_date = today.toISOString().substring(0, 10);
-  const depDate = new Date(departureDate);
-  const diffDays = Math.round((depDate - today) / (1000 * 60 * 60 * 24));
-  const created_at = new Date().toISOString();
+    const min_price = Math.min(...prices);
+    const max_price = Math.max(...prices);
+    const avg_price = prices.reduce((a, b) => a + b, 0) / prices.length;
 
-  await run(
-    `
-      INSERT INTO price_history
-      (origin, destination, departure_date, search_date, days_until_departure,
-       min_price, avg_price, max_price, currency, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    `,
-    [
-      origin,
-      destination,
-      departureDate,
-      search_date,
-      diffDays,
-      min_price,
-      avg_price,
-      max_price,
-      currency,
-      created_at,
-    ]
-  );
+    const today = new Date();
+    const search_date = today.toISOString().substring(0, 10);
+    const depDate = new Date(departureDate);
+    const diffDays = Math.round((depDate - today) / (1000 * 60 * 60 * 24));
+    const created_at = new Date().toISOString();
 
-  return { min_price, avg_price, max_price, days_until_departure: diffDays };
+    await run(
+      `
+        INSERT INTO price_history
+        (origin, destination, departure_date, search_date, days_until_departure,
+         min_price, avg_price, max_price, currency, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `,
+      [
+        origin,
+        destination,
+        departureDate,
+        search_date,
+        diffDays,
+        min_price,
+        avg_price,
+        max_price,
+        currency,
+        created_at,
+      ]
+    );
+
+    return { min_price, avg_price, max_price, days_until_departure: diffDays };
+  } catch (err) {
+    // Very important: log, but DO NOT throw
+    console.error('Error recording price history:', err.message);
+    return;
+  }
 }
 
 // Flexible dates helper (Amadeus only)
