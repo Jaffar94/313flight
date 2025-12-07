@@ -290,7 +290,7 @@ app.post('/api/flights', async (req, res) => {
       console.warn('Amadeus search failed:', err.message);
     }
 
-    // 2️⃣ SerpApi flights (Google Flights) – in parallel or sequential
+    // 2️⃣ SerpApi flights (Google Flights)
     let flightsSerp = [];
     try {
       flightsSerp = await searchSerpFlights({
@@ -299,11 +299,16 @@ app.post('/api/flights', async (req, res) => {
         departureDate,
         returnDate: tripType === 'round' ? returnDate : undefined,
         adults,
+        cabin,
         currency,
       });
     } catch (err) {
       console.warn('SerpApi search failed:', err.message);
     }
+
+    console.log(
+      `[Search] ${originCode}->${destinationCode} ${departureDate} | Amadeus=${flightsAmadeus.length}, SerpApi=${flightsSerp.length}`
+    );
 
     // 3️⃣ Merge + dedupe from both sources
     const flights = dedupeFlights([...flightsAmadeus, ...flightsSerp]);
