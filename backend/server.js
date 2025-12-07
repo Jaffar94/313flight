@@ -320,6 +320,11 @@ app.post('/api/flights', async (req, res) => {
         flexibleDates: [],
       });
     }
+    // after calling both providers inside /api/flights
+console.log(
+  `[Search] ${originCode}->${destinationCode} ${departureDate} | Amadeus=${flightsAmadeus.length}, SerpApi=${flightsSerp.length}`
+);
+
 
     // Stats for AI
     const prices = flights.map((f) => f.price);
