@@ -469,7 +469,7 @@
     }, 300);
 
     const handleDestinationInput = debounce(async () => {
-      constq = destinationInput.value.trim();
+      const q = destinationInput.value.trim();
       selectedDestination = null;
       destinationError.classList.add('hidden');
       if (!q) {
