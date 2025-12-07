@@ -66,11 +66,17 @@ async function searchLocations(keyword) {
   }
 
   // 🔁 FALLBACKS for common Middle East queries when API returns nothing
-  const k = (keyword || '').trim().toLowerCase();
+  const kRaw = (keyword || '').trim().toLowerCase();
+  const k = kRaw.replace(/\s+/g, ''); // remove spaces for easier matching
   const fallback = [];
 
   // UAE / Dubai
-  if (k.includes('dubai') || k === 'dxb' || k === 'uae') {
+  if (
+    k.startsWith('dub') ||
+    k.startsWith('dxb') ||
+    k.includes('uae') ||
+    k.startsWith('unitedarabemir')
+  ) {
     fallback.push({
       iataCode: 'DXB',
       name: 'Dubai International Airport',
@@ -88,7 +94,7 @@ async function searchLocations(keyword) {
   }
 
   // Abu Dhabi
-  if (k.includes('abu dhabi') || k === 'auh') {
+  if (k.startsWith('abudh') || k.startsWith('auh')) {
     fallback.push({
       iataCode: 'AUH',
       name: 'Abu Dhabi International Airport',
@@ -99,7 +105,7 @@ async function searchLocations(keyword) {
   }
 
   // Saudi Arabia / Riyadh
-  if (k.includes('riyadh') || k === 'ruh' || k.includes('saudi')) {
+  if (k.startsWith('riy') || k.includes('saudi') || k.startsWith('ruh')) {
     fallback.push({
       iataCode: 'RUH',
       name: 'King Khalid International Airport',
@@ -110,7 +116,7 @@ async function searchLocations(keyword) {
   }
 
   // Jeddah
-  if (k.includes('jeddah') || k === 'jed') {
+  if (k.startsWith('jed') || k.includes('jeddah')) {
     fallback.push({
       iataCode: 'JED',
       name: 'King Abdulaziz International Airport',
@@ -121,7 +127,7 @@ async function searchLocations(keyword) {
   }
 
   // Qatar / Doha
-  if (k.includes('doha') || k === 'doh' || k.includes('qatar')) {
+  if (k.startsWith('doha') || k.startsWith('doh') || k.includes('qatar')) {
     fallback.push({
       iataCode: 'DOH',
       name: 'Hamad International Airport',
@@ -132,7 +138,7 @@ async function searchLocations(keyword) {
   }
 
   // Oman / Muscat
-  if (k.includes('muscat') || k === 'mct' || k.includes('oman')) {
+  if (k.startsWith('musc') || k.startsWith('mct') || k.includes('oman')) {
     fallback.push({
       iataCode: 'MCT',
       name: 'Muscat International Airport',
@@ -143,7 +149,7 @@ async function searchLocations(keyword) {
   }
 
   // Kuwait
-  if (k.includes('kuwait') || k === 'kwi') {
+  if (k.startsWith('kuw') || k.startsWith('kwi')) {
     fallback.push({
       iataCode: 'KWI',
       name: 'Kuwait International Airport',
@@ -153,9 +159,9 @@ async function searchLocations(keyword) {
     });
   }
 
-  // If still nothing, just return empty
   return fallback;
 }
+
 
 // Flight offers search
 async function searchFlights({
