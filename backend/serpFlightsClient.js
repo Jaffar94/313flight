@@ -3,7 +3,10 @@ const axios = require('axios');
 const { airlineNameFromCode } = require('./aiAdvisor');
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
-console.log('SERPAPI_KEY present in env?', !!SERPAPI_KEY);
+console.log(
+  `[Search] ${originCode}->${destinationCode} ${departureDate} | Amadeus=${flightsAmadeus.length}, SerpApi=${flightsSerp.length}`
+);
+
 
 /**
  * Format minutes into "Xh Ym"
