@@ -43,6 +43,16 @@ app.get('/api/locations', async (req, res) => {
   }
 });
 
+function buildGoogleFlightsUrl(originCode, destinationCode, departTimeIso) {
+  // departTimeIso example: "2025-12-01T10:00:00"
+  const departDate = (departTimeIso || '').substring(0, 10); // YYYY-MM-DD
+  const base = 'https://www.google.com/travel/flights';
+  // Hash format: #search;f=ORIGIN;t=DEST;d=YYYY-MM-DD;
+  return `${base}#search;f=${encodeURIComponent(originCode)};t=${encodeURIComponent(
+    destinationCode
+  )};d=${departDate};`;
+}
+
 // Normalize Amadeus flight offer
 function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
   try {
@@ -62,7 +72,8 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
     const duration = formatDuration(itinerary.duration);
     const price = parseFloat(offer.price.grandTotal || offer.price.total || 0);
 
-    const bookingUrl = `https://www.google.com/travel/flights?q=Flights%20from%20${originCode}%20to%20${destinationCode}%20on%20${departTime.substring(0, 10)}`;
+    // ✅ New, stronger deep link: origin + destination + correct departure date
+    const bookingUrl = buildGoogleFlightsUrl(originCode, destinationCode, departTime);
 
     return {
       airline,
@@ -82,6 +93,7 @@ function normalizeFlightOffer(offer, originCode, destinationCode, currency) {
     return null;
   }
 }
+
 
 // Record history
 async function recordPriceHistory({
