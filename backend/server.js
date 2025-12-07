@@ -50,7 +50,11 @@ app.get("/api/locations", async (req, res) => {
     // Run both in parallel
     const [amadeusLocations, localLocations] = await Promise.all([
       searchLocations(q).catch((e) => {
-        console.error("Amadeus location error:", e.response?.status, e.response?.data || e.message);
+        console.error(
+          "Amadeus location error:",
+          e.response?.status,
+          e.response?.data || e.message
+        );
         return []; // fail soft, don’t kill the whole request
       }),
       Promise.resolve(searchLocalAirports(q)),
@@ -79,7 +83,6 @@ app.get("/api/locations", async (req, res) => {
     res.status(500).json({ error: "Location lookup failed" });
   }
 });
-
 
 /* ----------------------------------------------------------
    Normalize Amadeus Flight
@@ -118,29 +121,18 @@ function normalizeAmadeus(offer, origin, dest, currency) {
 /* ----------------------------------------------------------
    Merge + dedupe
 ---------------------------------------------------------- */
-    const carrier = f.carrierCode;
-    const airlineName =
-      f.airline ||      // backend-pretty name if present
-      carrier ||        // at least show the code
-      "Unknown airline";
+function dedupeFlights(flights) {
+  const map = new Map();
+  for (const f of flights) {
+    if (!f) continue; // <-- fixed: skip invalid entries instead of returning
 
-    const airline = document.createElement('span');
-    airline.className = 'font-semibold text-slate-100';
-    airline.textContent = airlineName;
-
-    const fn = document.createElement('span');
-    fn.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-[0.65rem] text-slate-200';
-    fn.textContent = f.flightNumber || '';
-
-    titleRow.appendChild(airline);
-    titleRow.appendChild(fn);
-
-    // badge:
-    badge.textContent = (carrier || airlineName || "??")
-      .slice(0, 3)
-      .toUpperCase();
-
-
+    const key = `${f.carrierCode}-${f.flightNumber}-${f.departTime}-${f.arrivalTime}`;
+    if (!map.has(key) || f.price < map.get(key).price) {
+      map.set(key, f);
+    }
+  }
+  return Array.from(map.values());
+}
 
 /* ----------------------------------------------------------
    Postgres history + seasonal update
@@ -173,7 +165,7 @@ async function saveHistory({
     await run(`
       DELETE FROM price_history
       WHERE search_date < CURRENT_DATE - INTERVAL '90 days'
-    `);
+   `);
 
     // insert
     await run(
