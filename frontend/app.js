@@ -1,5 +1,4 @@
 // frontend/app.js
-import { AIRLINE_MAP } from './aiadvisor.js';
 
 const state = {
   tripType: 'oneway',
