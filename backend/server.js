@@ -148,8 +148,7 @@ function dedupeFlights(flights) {
   return Array.from(map.values());
 }
 
-// Record price history snapshot in Postgres (Neon)
-// Record price history snapshot in Postgres (Neon) – fail-safe
+// Record price history snapshot in Postgres (Neon) – fail-safe with cleanup
 async function recordPriceHistory({
   origin,
   destination,
@@ -179,6 +178,16 @@ async function recordPriceHistory({
     const diffDays = Math.round((depDate - today) / (1000 * 60 * 60 * 24));
     const created_at = new Date().toISOString();
 
+    // 🔥 Cleanup: delete history older than 90 days (by search_date)
+    // Adjust '90 days' to '180 days' or '365 days' if you want a longer memory.
+    await run(
+      `
+        DELETE FROM price_history
+        WHERE search_date < CURRENT_DATE - INTERVAL '90 days'
+      `
+    );
+
+    // Insert new snapshot
     await run(
       `
         INSERT INTO price_history
@@ -202,11 +211,12 @@ async function recordPriceHistory({
 
     return { min_price, avg_price, max_price, days_until_departure: diffDays };
   } catch (err) {
-    // Very important: log, but DO NOT throw
+    // Very important: log, but DO NOT throw (never break flight search)
     console.error('Error recording price history:', err.message);
     return;
   }
 }
+
 
 // Flexible dates helper (Amadeus only)
 async function getFlexibleDateSummary({
